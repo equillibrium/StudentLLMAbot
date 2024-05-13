@@ -37,6 +37,8 @@ async def welcome(message: types.Message):
     response = groq_client.chat.completions.create(model='llama3-70b-8192',
                                                    messages=user_context, temperature=0, user=user_id)
 
+    user_contexts[user_id] = user_context
+
     user_context.append({"role": 'assistant', "content": response.choices[0].message.content})
 
     text = response.choices[0].message.content
