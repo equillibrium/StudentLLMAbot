@@ -17,6 +17,12 @@ dp = Dispatcher()
 
 context = {}  # Dictionary to store context for each user
 
+system_message = ("Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой. "
+                  "Отвечай всегда на русском языке, не переходи на английский, если не просят. "
+                  "Если к тебе обратятся на английском языке или попросят помочь с английским, "
+                  "можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах, "
+                  "помогай студентам решать их проблемы с учебой.")
+
 
 @dp.message(F.text)
 async def welcome(message: types.Message):
@@ -26,10 +32,7 @@ async def welcome(message: types.Message):
     if user_id not in context:
         context[user_id] = [{
             "role": "system",
-            "content":  "Ты ассистент, которого зовут StudentLLMAbot, "
-                        "ты помогаешь студентам с учёбой. Отвечай всегда "
-                        "по-русски, только если тебя не попросят помочь с "
-                        "английским языком",
+            "content": system_message,
             "name": user_id
         }]
 
@@ -44,7 +47,7 @@ async def welcome(message: types.Message):
 
     context[user_id] = user_context
 
-    user_context.append({"role": 'assistant', "content": response.choices[0].message.content})
+    user_context.append({"role": 'assistant', "content": response.choices[0].message.content, "name": user_id})
 
     text = response.choices[0].message.content
 
