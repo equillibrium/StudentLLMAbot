@@ -24,13 +24,17 @@ async def welcome(message: types.Message):
 
     user_id = str(message.from_user.id)
     if user_id not in context:
-        context[user_id] = [{"role": "system", "content": "Ты ассистент, которого зовут StudentLLMAbot, "
-                                                                "ты помогаешь студентам с учёбой. Отвечай всегда "
-                                                                "по-русски, только если тебя не попросят помочь с "
-                                                                "английским языком"}]
+        context[user_id] = [{
+            "role": "system",
+            "content":  "Ты ассистент, которого зовут StudentLLMAbot, "
+                        "ты помогаешь студентам с учёбой. Отвечай всегда "
+                        "по-русски, только если тебя не попросят помочь с "
+                        "английским языком",
+            "name": user_id
+        }]
 
     user_context = context[user_id]
-    user_context.append({"role": 'user', "content": message.text})
+    user_context.append({"role": 'user', "content": message.text, "name": user_id})
 
     if len(user_context) > 10:
         user_context = user_context[-10:]
