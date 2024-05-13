@@ -1,3 +1,5 @@
+# Description
+Telegram bot that is using Groq to access MetaAI LLMA
 # Startup
 ```git clone https://github.com/equillibrium/StudentLLMAbot.git```
 
