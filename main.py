@@ -54,7 +54,7 @@ async def welcome(message: types.Message):
     if len(user_context) > 10:
         user_context = user_context[-10:]
 
-    response = groq_client.chat.completions.create(model='llama3-70b-8192',
+    response = groq_client.chat.completions.create(model='llama3-8b-8192',
                                                    messages=user_context, temperature=0.25, user=user_id)
 
     context[user_id] = user_context
@@ -64,11 +64,17 @@ async def welcome(message: types.Message):
     text = response.choices[0].message.content
 
     if len(text) <= MAX_MESSAGE_LENGTH:
-        await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+        try:
+            await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            await message.answer(str(e), parse_mode=ParseMode.MARKDOWN)
     else:
         chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
         for chunk in chunks:
-            await message.answer(chunk, parse_mode=ParseMode.MARKDOWN)
+            try:
+                await message.answer(chunk, parse_mode=ParseMode.MARKDOWN)
+            except Exception as e:
+                await message.answer(str(e), parse_mode=ParseMode.MARKDOWN)
 
 
 async def main():
@@ -78,5 +84,5 @@ async def main():
 if __name__ == '__main__':
     try:
         asyncio.run(main())
-    except KeyboardInterrupt as e:
-        print(e)
+    except Exception as e:
+        print(str(e))
