@@ -17,6 +17,9 @@ bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
 dp = Dispatcher()
 
 MAX_MESSAGE_LENGTH = 4096
+MODEL = "llama3-8b-8192"
+global response_error
+global response
 
 context = {}  # Dictionary to store context for each user
 
@@ -29,12 +32,28 @@ system_message = ("Ты ассистент, которого зовут StudentL
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
+    global response_error
+    global response
+
     user_id = str(message.from_user.id)
-    context[user_id] = []  # Reset context for this user
-    user_context = []  # Reset user context
-    text = (f"Привет, {message.from_user.first_name}\r\nЯ StudentLLMAbot, использую модель llama3-70b-8192.\r\n"
-            f"Помогу тебе с задачами по учебе!")
-    await message.answer(text)
+    context[user_id] = [{
+        "role": "system",
+        "content": system_message,
+        "name": user_id
+    }]
+
+    user_context = context[user_id]
+
+    user_context.append(
+        {"role": 'user', "content": f"Привет, кто ты? Я {message.from_user.full_name}", "name": user_id})
+
+    try:
+        response = groq_client.chat.completions.create(model=MODEL,
+                                                       messages=user_context, temperature=0.2, user=user_id)
+        print(response.choices[0].message.content)
+    except Exception as e:
+        print(str(e))
+        response_error = str(e)
 
 
 @dp.message(F.text)
@@ -59,8 +78,8 @@ async def welcome(message: types.Message):
         user_context = user_context[-10:]
 
     try:
-        response = groq_client.chat.completions.create(model='llama3-8b-8192',
-                                                   messages=user_context, temperature=0.2, user=user_id)
+        response = groq_client.chat.completions.create(model=MODEL,
+                                                       messages=user_context, temperature=0.2, user=user_id)
         print(response.choices[0].message.content)
     except Exception as e:
         print(str(e))
