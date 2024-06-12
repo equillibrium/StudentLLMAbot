@@ -40,6 +40,7 @@ async def start(message: types.Message):
 @dp.message(F.text)
 async def welcome(message: types.Message):
     global response_error
+    global response
 
     await bot.send_chat_action(message.chat.id, 'typing')
 
@@ -60,7 +61,9 @@ async def welcome(message: types.Message):
     try:
         response = groq_client.chat.completions.create(model='llama3-8b-8192',
                                                    messages=user_context, temperature=0.25, user=user_id)
+        print(response.choices[0].message.content)
     except Exception as e:
+        print(str(e))
         response_error = str(e)
 
     context[user_id] = user_context
