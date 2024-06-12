@@ -38,6 +38,8 @@ async def start(message: types.Message):
 
 @dp.message(F.text)
 async def welcome(message: types.Message):
+    global response_error
+
     await bot.send_chat_action(message.chat.id, 'typing')
 
     user_id = str(message.from_user.id)
@@ -54,14 +56,17 @@ async def welcome(message: types.Message):
     if len(user_context) > 10:
         user_context = user_context[-10:]
 
-    response = groq_client.chat.completions.create(model='llama3-8b-8192',
+    try:
+        response = groq_client.chat.completions.create(model='llama3-8b-8192',
                                                    messages=user_context, temperature=0.25, user=user_id)
+    except Exception as e:
+        response_error = str(e)
 
     context[user_id] = user_context
 
     user_context.append({"role": 'assistant', "content": response.choices[0].message.content, "name": user_id})
 
-    text = response.choices[0].message.content
+    text = response.choices[0].message.content or response_error
 
     if len(text) <= MAX_MESSAGE_LENGTH:
         try:
