@@ -72,7 +72,8 @@ async def welcome(message: types.Message):
 
     context[user_id] = user_context
 
-    user_context.append({"role": 'assistant', "content": response.choices[0].message.content, "name": user_id})
+    if not message.text.startswith("/reset"):
+        user_context.append({"role": 'assistant', "content": response.choices[0].message.content, "name": user_id})
 
     text = response.choices[0].message.content or response_error
 
