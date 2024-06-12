@@ -4,6 +4,7 @@ import os
 
 from aiogram import Bot, types, Dispatcher, F
 from aiogram.enums import ParseMode
+from aiogram.filters import Command
 from dotenv import load_dotenv
 from groq import Groq
 
@@ -23,6 +24,13 @@ system_message = ("Ты ассистент, которого зовут StudentL
                   "можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах, "
                   "помогай студентам решать их проблемы с учебой.")
 
+@dp.message(Command("start"))
+async def start(message: types.Message):
+    context = []
+    user_context = []
+    text = (f"Привет, {message.from_user.first_name}\r\nЯ StudentLLMAbot, использую модель llama3-70b-8192."
+            f"Помогу тебе с задачами по учебе!")
+    await message.answer(text)
 
 @dp.message(F.text)
 async def welcome(message: types.Message):
