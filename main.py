@@ -60,7 +60,7 @@ async def welcome(message: types.Message):
 
     try:
         response = groq_client.chat.completions.create(model='llama3-8b-8192',
-                                                   messages=user_context, temperature=0.25, user=user_id)
+                                                   messages=user_context, temperature=0.2, user=user_id)
         print(response.choices[0].message.content)
     except Exception as e:
         print(str(e))
