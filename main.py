@@ -29,8 +29,9 @@ system_message = ("Ты ассистент, которого зовут StudentL
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    context = []
-    user_context = []
+    user_id = str(message.from_user.id)
+    context[user_id] = []  # Reset context for this user
+    user_context = []  # Reset user context
     text = (f"Привет, {message.from_user.first_name}\r\nЯ StudentLLMAbot, использую модель llama3-70b-8192.\r\n"
             f"Помогу тебе с задачами по учебе!")
     await message.answer(text)
