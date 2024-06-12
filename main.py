@@ -55,6 +55,13 @@ async def start(message: types.Message):
         print(str(e))
         response_error = str(e)
 
+    text = response.choices[0].message.content
+
+    try:
+        await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+    except Exception as e:
+        await message.answer(str(e), parse_mode=ParseMode.MARKDOWN)
+
 
 @dp.message(F.text)
 async def welcome(message: types.Message):
