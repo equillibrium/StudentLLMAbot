@@ -16,6 +16,8 @@ groq_client = Groq(api_key=os.getenv('GROQ_API_KEY'))
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
 dp = Dispatcher()
 
+MAX_MESSAGE_LENGTH = 4096
+
 context = {}  # Dictionary to store context for each user
 
 system_message = ("Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой. "
@@ -24,13 +26,15 @@ system_message = ("Ты ассистент, которого зовут StudentL
                   "можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах, "
                   "помогай студентам решать их проблемы с учебой.")
 
+
 @dp.message(Command("start"))
 async def start(message: types.Message):
     context = []
     user_context = []
-    text = (f"Привет, {message.from_user.first_name}\r\nЯ StudentLLMAbot, использую модель llama3-70b-8192."
+    text = (f"Привет, {message.from_user.first_name}\r\nЯ StudentLLMAbot, использую модель llama3-70b-8192.\r\n"
             f"Помогу тебе с задачами по учебе!")
     await message.answer(text)
+
 
 @dp.message(F.text)
 async def welcome(message: types.Message):
@@ -51,7 +55,7 @@ async def welcome(message: types.Message):
         user_context = user_context[-10:]
 
     response = groq_client.chat.completions.create(model='llama3-70b-8192',
-                                                   messages=user_context, temperature=0, user=user_id)
+                                                   messages=user_context, temperature=0.25, user=user_id)
 
     context[user_id] = user_context
 
@@ -59,7 +63,12 @@ async def welcome(message: types.Message):
 
     text = response.choices[0].message.content
 
-    await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+    if len(text) <= MAX_MESSAGE_LENGTH:
+        await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+    else:
+        chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+        for chunk in chunks:
+            await message.answer(chunk, parse_mode=ParseMode.MARKDOWN)
 
 
 async def main():
