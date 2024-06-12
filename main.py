@@ -32,30 +32,8 @@ system_message = ("Ты ассистент, которого зовут StudentL
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    global response_error
-    global response
-
-    user_id = str(message.from_user.id)
-    context[user_id] = [{
-        "role": "system",
-        "content": system_message,
-        "name": user_id
-    }]
-
-    user_context = context[user_id]
-
-    user_context.append(
-        {"role": 'user', "content": f"Привет, кто ты? Я {message.from_user.full_name}", "name": user_id})
-
-    try:
-        response = groq_client.chat.completions.create(model=MODEL,
-                                                       messages=user_context, temperature=0.2, user=user_id)
-        print(response.choices[0].message.content)
-    except Exception as e:
-        print(str(e))
-        response_error = str(e)
-
-    text = response.choices[0].message.content
+    text = (f"Я Studend LLMA Bot, использующий модель {MODEL} от Groq.\r\n"
+            f"Напиши мне запрос и я постараюсь помочь!")
 
     try:
         await message.answer(text, parse_mode=ParseMode.MARKDOWN)
@@ -71,7 +49,7 @@ async def welcome(message: types.Message):
     await bot.send_chat_action(message.chat.id, 'typing')
 
     user_id = str(message.from_user.id)
-    if user_id not in context:
+    if user_id not in context or "/reset" in message.text:
         context[user_id] = [{
             "role": "system",
             "content": system_message,
@@ -98,7 +76,13 @@ async def welcome(message: types.Message):
 
     text = response.choices[0].message.content or response_error
 
-    if len(text) <= MAX_MESSAGE_LENGTH:
+    if "/reset" in message.text:
+        text = 'Контекст нашей беседы очищен!'
+        try:
+            await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            await message.answer(str(e), parse_mode=ParseMode.MARKDOWN)
+    elif len(text) <= MAX_MESSAGE_LENGTH:
         try:
             await message.answer(text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
