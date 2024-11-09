@@ -22,23 +22,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+#      - name: Set up Docker Buildx
+#        uses: docker/setup-buildx-action@v2
 
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
           push: 'true'
+          cache-from: 'ghcr.io/equillibrium/studentllmabot:latest'
+          cache-to: 'ghcr.io/equillibrium/studentllmabot:latest'
           tags: 'ghcr.io/equillibrium/studentllmabot:latest'
 
   k3s:
     name: Deploy to k3s
     runs-on: k3s-runner
+    needs: build
 
     steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
       - name: Kubectl
         uses: actions-hub/kubectl@master
         env:
