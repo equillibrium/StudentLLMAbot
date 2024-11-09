@@ -29,13 +29,16 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: 'true'
-          tags: 'ghcr.io/equillibrium/studentllmabot/bot:latest'
+          tags: 'ghcr.io/equillibrium/studentllmabot:latest'
 
   k3s:
     name: Deploy to k3s
     runs-on: k3s-runner
 
     steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Kubectl
         uses: actions-hub/kubectl@master
         env:
