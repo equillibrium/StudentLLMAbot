@@ -5,14 +5,17 @@ on:
     branches: [ main ]
 jobs:
   build:
-    name: Build bot docker iamge
+    name: Build bot docker image
+
     runs-on: self-hosted
-    env:
-      REPO_NAME: $({{ github.repository }} | toLower)
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Set environment variables
+        run: |
+          echo "REPO_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
