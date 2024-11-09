@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: Build bot docker iamge
-    runs-on: k3s-runner
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v2
