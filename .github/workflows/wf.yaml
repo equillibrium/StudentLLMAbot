@@ -7,6 +7,9 @@ jobs:
   build:
     name: Build bot docker iamge
     runs-on: self-hosted
+    env:
+      REPO_NAME: $({{ github.repository | toLower }})
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -20,8 +23,8 @@ jobs:
 
       - name: Docker build
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/bot:latest .
+          docker build -t ghcr.io/${{ REPO_NAME }}/bot:latest .
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ github.repository }}/bot:latest
+          docker push ghcr.io/${{ REPO_NAME }}/bot:latest
