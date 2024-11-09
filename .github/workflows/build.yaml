@@ -29,7 +29,5 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
-          context: .
           push: 'true'
-          tags: latest
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          tags: 'ghcr.io/equillibrium/studentllmabot/bot:latest'
