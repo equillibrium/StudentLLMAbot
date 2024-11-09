@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: student-llma-bot
+  namespace: student-llma-bot
 spec:
   replicas: 1
   strategy:
