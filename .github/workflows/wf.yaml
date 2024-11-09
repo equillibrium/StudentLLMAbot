@@ -47,9 +47,23 @@ jobs:
           args: create namespace student-llma-bot
         continue-on-error: true
 
-      - name: Kubectl create secret
+      - name: Kubectl create secret ghcr
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: kubectl create secret docker-registry ghcr -n "student-llma-bot" --docker-server=ghcr.io --docker-username=${{ github.actor }} --docker-password=${{ secrets.GITHUB_TOKEN }} --docker-email=kotobars@gmail.com
+
+      - name: Kubectl create secret env
         uses: actions-hub/kubectl@master
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
           args: create secret generic "student-llma-bot" -n "student-llma-bot" --from-literal=TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" --from-literal=GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
+
+      - name: Kubectl apply deployment
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: apply -f k8s/deployment.yaml

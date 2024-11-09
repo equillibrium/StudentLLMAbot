@@ -2,45 +2,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ${{ GITHUB_REPOSITORY }}
-  annotations:
-    kubernetes.io/change-cause: "${{ github.event.head_commit.message }}"
+  name: student-llma-bot
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: ${{ GITHUB_REPOSITORY }}
+      app: student-llma-bot
   template:
     metadata:
       labels:
-        app: ${{ GITHUB_REPOSITORY }}
+        app: student-llma-bot
     spec:
       imagePullSecrets:
         - name: ghcr
       containers:
-      - name: ${{ GITHUB_REPOSITORY }}
-        image: ${BOT_DOCKER_IMAGE}
+      - name: student-llma-bot
+        image: 'ghcr.io/equillibrium/studentllmabot:latest'
         envFrom:
         - secretRef:
-            name: ${{ GITHUB_REPOSITORY }}
-
-      - name: prodsdbotfastapi
-        image: ${FASTAPI_DOCKER_IMAGE}
-        ports:
-          - containerPort: 5000
-        envFrom:
-          - secretRef:
-              name: prod-${PROJECT}
-        volumeMounts:
-          - mountPath: "/app/.ssh"
-            name: ssh-credentials
-
-      volumes:
-        - name: ssh-credentials
-          secret:
-            secretName: ssh-credentials
-            items:
-              - key: SSH_PRIVATE_KEY
-                path: id_rsa
+            name: student-llma-bot
