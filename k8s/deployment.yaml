@@ -1,0 +1,46 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${{ GITHUB_REPOSITORY }}
+  annotations:
+    kubernetes.io/change-cause: "${{ github.event.head_commit.message }}"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ${{ GITHUB_REPOSITORY }}
+  template:
+    metadata:
+      labels:
+        app: ${{ GITHUB_REPOSITORY }}
+    spec:
+      imagePullSecrets:
+        - name: ghcr
+      containers:
+      - name: ${{ GITHUB_REPOSITORY }}
+        image: ${BOT_DOCKER_IMAGE}
+        envFrom:
+        - secretRef:
+            name: ${{ GITHUB_REPOSITORY }}
+
+      - name: prodsdbotfastapi
+        image: ${FASTAPI_DOCKER_IMAGE}
+        ports:
+          - containerPort: 5000
+        envFrom:
+          - secretRef:
+              name: prod-${PROJECT}
+        volumeMounts:
+          - mountPath: "/app/.ssh"
+            name: ssh-credentials
+
+      volumes:
+        - name: ssh-credentials
+          secret:
+            secretName: ssh-credentials
+            items:
+              - key: SSH_PRIVATE_KEY
+                path: id_rsa

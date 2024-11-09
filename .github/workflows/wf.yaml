@@ -39,9 +39,21 @@ jobs:
     needs: build
 
     steps:
-      - name: Kubectl
+      - name: Kubectl create namespace
         uses: actions-hub/kubectl@master
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
-          args: get pods -A
+          args: create namespace student-llma-bot
+        if: always()
+
+      - name: Kubectl create secret
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: |
+            create secret generic student-llma-bot \
+              --from-literal=TELEGRAM_BOT_TOKEN=${{ secret.TELEGRAM_BOT_TOKEN }} \
+              --from-literal=GROQ_API_KEY=${{ secret.GROQ_API_KEY }}
+              --namespace student-llma-bot
