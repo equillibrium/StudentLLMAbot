@@ -27,4 +27,4 @@ jobs:
         env:
           DOCKER_BUILDKIT: 1
         run: |
-          docker buildx build --tag ghcr.io/studentllmabot/bot:latest --file Dockerfile . --push
+          docker buildx build --tag ghcr.io/equillibrium/studentllmabot/bot:latest --file Dockerfile . --push
