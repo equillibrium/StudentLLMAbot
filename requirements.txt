@@ -1,3 +1,3 @@
-groq~=0.5.0
+groq
 aiogram
-python-dotenv~=1.0.0
+python-dotenv
