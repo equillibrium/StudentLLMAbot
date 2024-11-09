@@ -7,7 +7,7 @@ jobs:
   build:
     name: Build bot docker image
 
-    runs-on: self-hosted
+    runs-on: k3s-runner
     permissions:
       packages: write
       contents: read
