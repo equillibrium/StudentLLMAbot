@@ -27,8 +27,8 @@ jobs:
         env:
           DOCKER_BUILDKIT: 1
         run: |
-          docker build -t ghcr.io/studentllmabot/bot:latest .
+          docker build -t ghcr.io/equillibrium/studentllmabot/bot:latest .
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/studentllmabot/bot:latest
+          docker push ghcr.io/equillibrium/studentllmabot/bot:latest
