@@ -21,6 +21,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker build
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
           docker build -t ghcr.io/studentllmabot/bot:latest .
 
