@@ -13,10 +13,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set environment variables
-        run: |
-          echo "REPO_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -26,8 +22,8 @@ jobs:
 
       - name: Docker build
         run: |
-          docker build -t ghcr.io/${{ REPO_NAME }}/bot:latest .
+          docker build -t ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/bot:latest .
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ REPO_NAME }}/bot:latest
+          docker push ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/bot:latest
