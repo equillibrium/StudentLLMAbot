@@ -40,4 +40,4 @@ COPY . .
 # Expose the port that the application listens on.
 
 # Run the application.
-CMD python main.py
+CMD ["python", "main.py"]
