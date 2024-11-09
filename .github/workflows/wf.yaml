@@ -1,0 +1,27 @@
+---
+name: Build docker image
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    name: Build bot docker iamge
+    runs-on: k3s-runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker build
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository }}/your-image-name:latest
