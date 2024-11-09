@@ -8,7 +8,7 @@ jobs:
     name: Build bot docker iamge
     runs-on: self-hosted
     env:
-      REPO_NAME: $({{ github.repository | toLower }})
+      REPO_NAME: ${{ github.repository | toLower }}
 
     steps:
       - name: Checkout
