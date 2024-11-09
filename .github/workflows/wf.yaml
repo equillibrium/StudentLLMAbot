@@ -22,8 +22,8 @@ jobs:
 
       - name: Docker build
         run: |
-          docker build -t ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/bot:latest .
+          docker build -t ghcr.io/$({{ github.repository }}' | tr '[:upper:]' '[:lower:]')/bot:latest .
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/bot:latest
+          docker push ghcr.io/$({{ github.repository }}' | tr '[:upper:]' '[:lower:]')/bot:latest
