@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - run: |
-          export VAR=${{ GITHUB_REPOSITORY }}
+          export VAR=${{ github.repository }}
           PROJECT=$(echo "${test#*/}" | tr '[:upper:]' '[:lower:]')
           echo "PROJECT=$PROJECT" | tr "[:upper:]" "[:lower:]" >> $GITHUB_ENV
           echo $GITHUB_ENV
