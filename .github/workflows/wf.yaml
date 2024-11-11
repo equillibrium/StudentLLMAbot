@@ -16,7 +16,7 @@ jobs:
           export repo=${{ github.repository }}
           PROJECT=$(echo "${repo#*/}" | tr '[:upper:]' '[:lower:]')
           echo "PROJECT=$PROJECT" >> $GITHUB_ENV
-          echo ${{ github.env }}
+          echo ${{ GITHUB_ENV }}
 
 #      - uses: actions/checkout@v2
 #
