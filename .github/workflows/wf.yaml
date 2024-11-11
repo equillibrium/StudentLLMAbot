@@ -11,9 +11,6 @@ jobs:
       packages: write
       contents: read
 
-    env:
-      PROJECT: ${{ GITHUB_REPOSITORY }}
-
     steps:
       - run: |
           export VAR=${{ GITHUB_REPOSITORY }}
