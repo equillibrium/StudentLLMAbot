@@ -21,7 +21,7 @@ spec:
       imagePullSecrets:
         - name: ghcr
       containers:
-      - name: student-llma-bot
+      - name: ${PROJECT}
         image: ${IMAGE}:latest
         envFrom:
         - secretRef:

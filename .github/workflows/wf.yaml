@@ -87,5 +87,5 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          sudo apt-get update && sudo apt-get install -y gettext
+          sudo apt-get update -qq && sudo apt-get install -q -y gettext
           cat k8s/deployment.yaml | envsubst | kubectl apply -n $PROJECT -f -
