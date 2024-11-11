@@ -85,5 +85,4 @@ jobs:
 
       - run: |
           sudo apt-get update && sudo apt-get install -y gettext
-          kubectl apply -f k8s/deployment.yaml | envsubst | \
-            --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
+          cat k8s/deployment.yaml | envsubst | kubectl apply -n $PROJECT -f -
