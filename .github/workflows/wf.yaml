@@ -55,9 +55,9 @@ jobs:
           IMAGE=ghcr.io/${{ github.actor }}/$PROJECT
 
           echo "PROJECT=$PROJECT" >> $GITHUB_ENV
-          echo "IMAGE=${{ env.IMAGE }}" >> $GITHUB_ENV
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-          echo "$PROJECT","${{ env.IMAGE }}"
+          echo "$PROJECT","$IMAGE"
 
       - uses: tale/kubectl-action@v1
         with:
