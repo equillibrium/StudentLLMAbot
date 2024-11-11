@@ -11,7 +11,6 @@ from aiogram.filters import Command
 from aiogram.fsm.storage.redis import RedisStorage
 from dotenv import load_dotenv
 from groq import AsyncGroq
-from httpx import AsyncClient
 
 load_dotenv()
 
@@ -22,8 +21,8 @@ bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
 redis = aioredis.from_url(os.getenv('REDIS_URL'))
 dp = Dispatcher(storage=RedisStorage(redis))
 
-groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'),)
-                        # http_client=AsyncClient(proxies=os.getenv('PROXY_STRING')))
+groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'), )
+# http_client=AsyncClient(proxies=os.getenv('PROXY_STRING')))
 
 MAX_MESSAGE_LENGTH = 4096
 MODEL = "llama3-8b-8192"
