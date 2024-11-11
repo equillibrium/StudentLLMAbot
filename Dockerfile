@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade setuptools wheel
+    pip install --upgrade setuptools wheel flake8
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
