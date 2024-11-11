@@ -23,7 +23,7 @@ jobs:
           
           echo "$PROJECT","$IMAGE"
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: docker/login-action@v2
         with:
@@ -81,7 +81,7 @@ jobs:
             --from-literal=GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}" \
             --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Kubectl apply deployment
         env:
