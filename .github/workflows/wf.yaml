@@ -23,72 +23,66 @@ jobs:
           
           echo "$PROJECT","$IMAGE"
 
-      - run: |
-          echo $PROJECT
-          echo $IMAGE
+      - uses: actions/checkout@v2
 
-#      - uses: actions/checkout@v2
-#
-#      - uses: docker/login-action@v2
-#        with:
-#          registry: ghcr.io
-#          username: ${{ github.actor }}
-#          password: ${{ secrets.GITHUB_TOKEN }}
-#
-#      - name: Set up Docker Buildx
-#        uses: docker/setup-buildx-action@v2
-#
-#      - name: Build and push
-#        uses: docker/build-push-action@v2
-#        with:
-#          push: 'true'
-#          cache-from: ${{ IMAGE }}:cache
-#          cache-to: ${{ IMAGE }}:cache
-#          tags: ${{ IMAGE }}:latest
-#
-#  deploy:
-#    name: Deploy to k3s
-#    runs-on: k3s-runner
-#    needs: build
-#
-#    steps:
-#      - run: |
-#          export repo=${{ github.repository }}
-#          PROJECT=$(echo "${repo#*/}" | tr '[:upper:]' '[:lower:]')
-#
-#          IMAGE=ghcr.io/${{ github.actor }}/$PROJECT
-#
-#          echo "PROJECT=$PROJECT" >> $GITHUB_ENV
-#          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-#
-#          echo "$PROJECT","$IMAGE"
-#
-#      - uses: tale/kubectl-action@v1
-#        with:
-#          base64-kube-config: ${{ secrets.KUBE_CONFIG }}
-#
-#      - run: kubectl create namespace student-llma-bot || true
-#
-#      - run: |
-#          kubectl create secret docker-registry ghcr \
-#            -n "student-llma-bot" \
-#            --docker-server=ghcr.io \
-#            --docker-username=${{ github.actor }} \
-#            --docker-password=${{ secrets.GITHUB_TOKEN }} \
-#            --docker-email=kotobars@gmail.com \
-#            --dry-run=client -o=yaml | kubectl apply -n $PROJECT
-#
-#      - run: |
-#          kubectl create secret generic "student-llma-bot" \
-#            -n "student-llma-bot" \
-#            --from-literal=TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
-#            --from-literal=GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
-#
-#      - uses: actions/checkout@v2
-#
-#      - name: Kubectl apply deployment
-#        uses: actions-hub/kubectl@master
-#        env:
-#          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-#        with:
-#          args: apply -f k8s/deployment.yaml
+      - uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          push: 'true'
+          cache-from: type=registry,ref=$IMAGE:latest
+          cache-to: type=registry,ref=$IMAGE:latest,mode=max
+          tags: $IMAGE:latest
+
+  deploy:
+    name: Deploy to k3s
+    runs-on: k3s-runner
+    needs: build
+
+    steps:
+      - run: |
+          export repo=${{ github.repository }}
+          PROJECT=$(echo "${repo#*/}" | tr '[:upper:]' '[:lower:]')
+
+          IMAGE=ghcr.io/${{ github.actor }}/$PROJECT
+
+          echo "PROJECT=$PROJECT" >> $GITHUB_ENV
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+          echo "$PROJECT","$IMAGE"
+
+      - uses: tale/kubectl-action@v1
+        with:
+          base64-kube-config: ${{ secrets.KUBE_CONFIG }}
+
+      - run: kubectl create namespace $PROJECT || true
+
+      - run: |
+          kubectl create secret docker-registry ghcr \
+            -n "$PROJECT" \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-email=kotobars@gmail.com \
+            --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
+
+      - run: |
+          kubectl create secret generic "$PROJECT" \
+            -n "$PROJECT" \
+            --from-literal=TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            --from-literal=GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}" \
+            --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
+
+      - uses: actions/checkout@v2
+
+      - run: |
+          kubectl apply -f k8s/deployment.yaml \
+            --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -

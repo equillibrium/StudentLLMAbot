@@ -2,25 +2,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: student-llma-bot
-  namespace: student-llma-bot
+  name: ${PROJECT}
+  namespace: ${PROJECT}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: student-llma-bot
+      app: ${PROJECT}
   template:
     metadata:
       labels:
-        app: student-llma-bot
+        app: ${PROJECT}
     spec:
       imagePullSecrets:
         - name: ghcr
       containers:
       - name: student-llma-bot
-        image: 'ghcr.io/equillibrium/studentllmabot:latest'
+        image: ${IMAGE}:latest
         envFrom:
         - secretRef:
-            name: student-llma-bot
+            name: ${PROJECT}
