@@ -79,7 +79,7 @@ jobs:
             -n "$PROJECT" \
             --from-literal=TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
             --from-literal=GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}" \
-          --from-literal=REDIS_URL="${{ secrets.REDIS_URL }}" \
+            --from-literal=REDIS_URL="${{ secrets.REDIS_URL }}" \
             --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
 
       - uses: actions/checkout@v4
