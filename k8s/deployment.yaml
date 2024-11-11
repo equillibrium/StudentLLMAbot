@@ -26,3 +26,5 @@ spec:
         envFrom:
         - secretRef:
             name: ${PROJECT}
+      - name: redis
+        image: redis

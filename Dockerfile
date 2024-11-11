@@ -37,7 +37,7 @@ USER appuser
 # Copy the source code into the container.
 COPY . .
 
-# Expose the port that the application listens on.
+RUN flake8 --ignore=E501,F401,E402,W605
 
 # Run the application.
 CMD ["python", "main.py"]
