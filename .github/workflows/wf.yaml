@@ -38,9 +38,9 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: 'true'
-          cache-from: type=registry,ref=$IMAGE:latest
-          cache-to: type=registry,ref=$IMAGE:latest,mode=max
-          tags: $IMAGE:latest
+          cache-from: type=registry,ref=${{ IMAGE }}:latest
+          cache-to: type=registry,ref=${{ IMAGE }}:latest,mode=max
+          tags: ${{ IMAGE }}:latest
 
   deploy:
     name: Deploy to k3s
