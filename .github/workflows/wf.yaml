@@ -16,7 +16,7 @@ jobs:
           export repo=${{ github.repository }}
           PROJECT=$(echo "${repo#*/}" | tr '[:upper:]' '[:lower:]')
           
-          IMAGE=ghcr.io/${{ github.actor }}/${{ PROJECT }}
+          IMAGE=ghcr.io/${{ github.actor }}/$PROJECT
           
           echo "PROJECT=$PROJECT" >> $GITHUB_ENV
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
