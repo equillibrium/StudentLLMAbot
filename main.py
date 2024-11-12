@@ -26,7 +26,7 @@ dp = Dispatcher(storage=RedisStorage(redis))
 # Initialize clients for Groq and OpenAI
 groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'), )
 # http_client=AsyncClient(proxies=os.getenv('PROXY_STRING')))
-openai_client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'), base_url=os.getenv('OPENAI_BASE_URL'))
+openai_client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 MAX_MESSAGE_LENGTH = 4096
 MODEL_CHOICES = os.getenv('MODEL_CHOICES').split(',')

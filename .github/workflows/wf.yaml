@@ -82,7 +82,6 @@ jobs:
             --from-literal=REDIS_URL="${{ secrets.REDIS_URL }}" \
             --from-literal=MODEL_CHOICES="${{ secrets.MODEL_CHOICES }}" \
             --from-literal=OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            --from-literal=OPENAI_BASE_URL="${{ secrets.OPENAI_BASE_URL }}" \
             --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
 
       - uses: actions/checkout@v4

@@ -28,5 +28,3 @@ spec:
             name: ${PROJECT}
       - name: redis
         image: redis
-      - name: openaiproxy
-        image: pawanosman/chatgpt
