@@ -97,7 +97,7 @@ async def reset(message: types.Message):
 @dp.message(Command("model"))
 async def choose_model(message: types.Message):
     """Present model options to the user."""
-    user_id = str(message.from_user.id)
+    # user_id = str(message.from_user.id)
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text=model, callback_data=f"set_model:{model}")] for model in
                          MODEL_CHOICES]
