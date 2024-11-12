@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: Build bot docker image
-    runs-on: k3s-runner
+    runs-on: ubuntu-latest
     permissions:
       packages: write
       contents: read
@@ -44,7 +44,7 @@ jobs:
 
   deploy:
     name: Deploy to k3s
-    runs-on: k3s-runner
+    runs-on: ubuntu-latest
     needs: build
 
     steps:

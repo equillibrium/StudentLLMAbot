@@ -3,3 +3,4 @@ aiogram
 python-dotenv
 redis
 httpx
+openai
