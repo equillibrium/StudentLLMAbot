@@ -18,8 +18,7 @@ spec:
       annotations:
         kubernetes.io/change-cause: "${COMMIT_MESSAGE}"
     spec:
-      imagePullSecrets:
-        - name: ghcr
+      serviceAccountName: ${PROJECT}
       containers:
       - name: ${PROJECT}
         image: ${IMAGE}:latest
