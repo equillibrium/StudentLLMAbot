@@ -85,8 +85,12 @@ jobs:
             --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
 
       - run: |
-          kubectl create serviceaccount "$PROJECT" -n "$PROJECT"
-          kubectl patch serviceaccount "$PROJECT" -n "$PROJECT" -p '{"imagePullSecrets": [{"name": "ghcr"}]}'
+          kubectl create serviceaccount "$PROJECT" -n "$PROJECT" \
+            --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
+          kubectl patch serviceaccount "$PROJECT" -n "$PROJECT" \
+            -p '{"imagePullSecrets": [{"name": "ghcr"}]}' \
+            --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
+          
 
       - uses: actions/checkout@v4
 
