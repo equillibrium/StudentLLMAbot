@@ -84,9 +84,9 @@ jobs:
             --from-literal=OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             --dry-run=client -o=yaml | kubectl apply -n $PROJECT -f -
 
-      - run: |
-          kubectl create serviceaccount "$PROJECT" -n "$PROJECT"
-          kubectl patch serviceaccount "$PROJECT" -n "$PROJECT" -p {"imagePullSecrets": [{"name": "ghcr"}]}
+#      - run: |
+#          kubectl create serviceaccount "$PROJECT" -n "$PROJECT"
+#          kubectl patch serviceaccount "$PROJECT" -n "$PROJECT" -p {"imagePullSecrets": [{"name": "ghcr"}]}
 
       - uses: actions/checkout@v4
 
