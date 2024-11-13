@@ -86,7 +86,7 @@ jobs:
 
       - run: |
           kubectl create serviceaccount "$PROJECT" -n "$PROJECT"
-          kubectl patch serviceaccount "$PROJECT" -n "$PROJECT" -p {"imagePullSecrets": [{"name": "ghcr"}]}
+          kubectl patch serviceaccount "$PROJECT" -n "$PROJECT" -p '{"imagePullSecrets": [{"name": "ghcr"}]}'
 
       - uses: actions/checkout@v4
 
