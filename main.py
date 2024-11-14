@@ -52,7 +52,6 @@ system_message = ("Ты ассистент, которого зовут StudentL
                   "помогай студентам решать их проблемы с учебой.")
 
 
-
 async def get_user_context(user_id):
     data = await redis.get(user_id)
     if data:
@@ -133,10 +132,13 @@ async def welcome(message: types.Message):
     # Gemini model uses a different format
     if chosen_model == MODEL_CHOICES[2]:  # Gemini model
         # Ensure the context is in the correct format for Gemini
-        context = [{"parts": [{"text": msg["content"]}]} for msg in context if "content" in msg]
-        context.append({"parts": [{"text": message.text}]})  # Append the message text in the `parts` key
+        context = [{"parts": [{"text": msg["content"]}]}
+                   for msg in context if "content" in msg]
+        # Append the message text in the `parts` key
+        context.append({"parts": [{"text": message.text}]})
     else:  # For other models, keep the previous format
-        context.append({"role": 'user', "content": message.text, "name": user_id})
+        context.append(
+            {"role": 'user', "content": message.text, "name": user_id})
 
     if len(context) > 10:
         context = context[-10:]
@@ -162,14 +164,16 @@ async def welcome(message: types.Message):
     except Exception as e:
         response_content = f"Error: {str(e)}"
 
-    context.append({"role": 'assistant', "content": response_content, "name": user_id})
+    context.append(
+        {"role": 'assistant', "content": response_content, "name": user_id})
     await save_user_context(user_id, context)
 
     text = response_content or "Произошла ошибка при получении ответа."
     if len(text) <= MAX_MESSAGE_LENGTH:
         await message.answer(text)
     else:
-        chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+        chunks = [text[i:i + MAX_MESSAGE_LENGTH]
+                  for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
         for chunk in chunks:
             await message.answer(chunk)
 
