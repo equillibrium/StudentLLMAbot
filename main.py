@@ -129,19 +129,21 @@ async def welcome(message: types.Message):
     chosen_model = await get_user_model(user_id)
     client = await get_client_for_model(chosen_model)
 
-    # Gemini model uses a different format
     if chosen_model == MODEL_CHOICES[2]:  # Gemini model
-        # Ensure the context is in the correct format for Gemini
-        context = [{"role": msg.get("role", "user"), "parts": [{"text": msg["content"]}]}
-                   for msg in context if "content" in msg]
-        # Append the system message if not already present
-        if not any(msg["role"] == "system" for msg in context):
-            context.insert(0, {"role": "system", "parts": [{"text": system_message}]})
-        # Append the user message
-        context.append({"role": "user", "parts": [{"text": message.text}]})
-    else:  # For other models, keep the previous format
-        context.append(
-            {"role": 'user', "content": message.text, "name": user_id})
+        # Преобразуем контекст для Gemini
+        gemini_context = []
+        for msg in context:
+            if msg["role"] == "system":
+                continue  # Пропускаем system message для Gemini
+            role = "model" if msg["role"] == "assistant" else "user"
+            if "content" in msg:
+                gemini_context.append({"role": role, "parts": [{"text": msg["content"]}]})
+            elif "parts" in msg:
+                gemini_context.append({"role": role, "parts": msg["parts"]})
+        
+        context = gemini_context
+    else:
+        context.append({"role": 'user', "content": message.text, "name": user_id})
 
     if len(context) > 10:
         context = context[-10:]
@@ -159,16 +161,18 @@ async def welcome(message: types.Message):
             )
             response_content = response.choices[0].message.content
         elif chosen_model == MODEL_CHOICES[2]:  # Gemini model
-            # Ensure message sending in the correct format
             chat_session = client.start_chat(history=context)
-            gemini_response = chat_session.send_message(message.text)
+            gemini_response = await chat_session.send_message_async(message.text)
             response_content = gemini_response.text
+            # Сохраняем ответ в правильном формате для Gemini
+            context.append({"role": "model", "parts": [{"text": response_content}]})
 
     except Exception as e:
         response_content = f"Error: {str(e)}"
 
-    context.append(
-        {"role": 'assistant', "parts": [{"text": response_content}]})
+    if chosen_model != MODEL_CHOICES[2]:
+        context.append({"role": 'assistant', "content": response_content})
+    
     await save_user_context(user_id, context)
 
     text = response_content or "Произошла ошибка при получении ответа."
