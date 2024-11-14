@@ -24,6 +24,12 @@ bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
 redis = aioredis.from_url(os.getenv('REDIS_URL'))
 dp = Dispatcher(storage=RedisStorage(redis))
 
+system_message = ("Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой. "
+                  "Отвечай всегда на русском языке, не переходи на английский, если не просят. "
+                  "Если к тебе обратятся на английском языке или попросят помочь с английским, "
+                  "можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах, "
+                  "помогай студентам решать их проблемы с учебой.")
+
 # Initialize clients for Groq, OpenAI, and Gemini
 groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'))
 openai_client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
@@ -39,17 +45,12 @@ generation_config = {
 gemini_model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
     generation_config=generation_config,
+    system_instruction=system_message
 )
 
 MAX_MESSAGE_LENGTH = 4096
 MODEL_CHOICES = os.getenv('MODEL_CHOICES').split(',')
 DEFAULT_MODEL = MODEL_CHOICES[0]
-
-system_message = ("Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой. "
-                  "Отвечай всегда на русском языке, не переходи на английский, если не просят. "
-                  "Если к тебе обратятся на английском языке или попросят помочь с английским, "
-                  "можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах, "
-                  "помогай студентам решать их проблемы с учебой.")
 
 
 async def get_user_context(user_id):
@@ -132,9 +133,8 @@ async def welcome(message: types.Message):
     if chosen_model == MODEL_CHOICES[2]:  # Gemini model
         # Преобразуем контекст для Gemini
         gemini_context = []
-        for msg in context:
-            if msg["role"] == "system":
-                continue  # Пропускаем system message для Gemini
+        # Пропускаем первое сообщение, так как system_instruction уже установлен
+        for msg in context[1:]:
             role = "model" if msg["role"] == "assistant" else "user"
             if "content" in msg:
                 gemini_context.append(
