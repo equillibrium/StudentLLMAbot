@@ -137,13 +137,15 @@ async def welcome(message: types.Message):
                 continue  # Пропускаем system message для Gemini
             role = "model" if msg["role"] == "assistant" else "user"
             if "content" in msg:
-                gemini_context.append({"role": role, "parts": [{"text": msg["content"]}]})
+                gemini_context.append(
+                    {"role": role, "parts": [{"text": msg["content"]}]})
             elif "parts" in msg:
                 gemini_context.append({"role": role, "parts": msg["parts"]})
-        
+
         context = gemini_context
     else:
-        context.append({"role": 'user', "content": message.text, "name": user_id})
+        context.append(
+            {"role": 'user', "content": message.text, "name": user_id})
 
     if len(context) > 10:
         context = context[-10:]
@@ -165,14 +167,15 @@ async def welcome(message: types.Message):
             gemini_response = await chat_session.send_message_async(message.text)
             response_content = gemini_response.text
             # Сохраняем ответ в правильном формате для Gemini
-            context.append({"role": "model", "parts": [{"text": response_content}]})
+            context.append({"role": "model", "parts": [
+                           {"text": response_content}]})
 
     except Exception as e:
         response_content = f"Error: {str(e)}"
 
     if chosen_model != MODEL_CHOICES[2]:
         context.append({"role": 'assistant', "content": response_content})
-    
+
     await save_user_context(user_id, context)
 
     text = response_content or "Произошла ошибка при получении ответа."
