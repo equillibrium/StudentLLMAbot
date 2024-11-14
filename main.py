@@ -132,13 +132,13 @@ async def welcome(message: types.Message):
     # Gemini model uses a different format
     if chosen_model == MODEL_CHOICES[2]:  # Gemini model
         # Ensure the context is in the correct format for Gemini
-        context = [{"role": msg.get("role", "user"), "content": msg["content"]}
+        context = [{"parts": [{"text": msg["content"]}]}
                    for msg in context if "content" in msg]
         # Append the system message if not already present
-        if not any(msg["role"] == "system" for msg in context):
-            context.insert(0, {"role": "system", "content": system_message})
+        if not any("system" in part for part in context):
+            context.insert(0, {"parts": [{"text": system_message}]})
         # Append the user message
-        context.append({"role": "user", "content": message.text})
+        context.append({"parts": [{"text": message.text}]})
     else:  # For other models, keep the previous format
         context.append(
             {"role": 'user', "content": message.text, "name": user_id})
@@ -168,7 +168,7 @@ async def welcome(message: types.Message):
         response_content = f"Error: {str(e)}"
 
     context.append(
-        {"role": 'assistant', "content": response_content, "name": user_id})
+        {"parts": [{"text": response_content}]})
     await save_user_context(user_id, context)
 
     text = response_content or "Произошла ошибка при получении ответа."
