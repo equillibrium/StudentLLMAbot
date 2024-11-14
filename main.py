@@ -36,10 +36,10 @@ openai_client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 generation_config = {
-    "temperature": 1,
+    "temperature": 0.2,
     "top_p": 0.95,
     "top_k": 40,
-    "max_output_tokens": 8192,
+    "max_output_tokens": 4096,
     "response_mime_type": "text/plain",
 }
 gemini_model = genai.GenerativeModel(
