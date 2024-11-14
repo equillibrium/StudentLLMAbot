@@ -13,6 +13,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from dotenv import load_dotenv
 from groq import AsyncGroq
 from openai import AsyncOpenAI
+import google.generativeai as genai
 
 load_dotenv()
 
@@ -23,10 +24,22 @@ bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
 redis = aioredis.from_url(os.getenv('REDIS_URL'))
 dp = Dispatcher(storage=RedisStorage(redis))
 
-# Initialize clients for Groq and OpenAI
-groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'), )
-# http_client=AsyncClient(proxies=os.getenv('PROXY_STRING')))
+# Initialize clients for Groq, OpenAI, and Gemini
+groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'))
 openai_client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+generation_config = {
+    "temperature": 1,
+    "top_p": 0.95,
+    "top_k": 40,
+    "max_output_tokens": 8192,
+    "response_mime_type": "text/plain",
+}
+gemini_model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    generation_config=generation_config,
+)
 
 MAX_MESSAGE_LENGTH = 4096
 MODEL_CHOICES = os.getenv('MODEL_CHOICES').split(',')
@@ -39,8 +52,8 @@ system_message = ("Ты ассистент, которого зовут StudentL
                   "помогай студентам решать их проблемы с учебой.")
 
 
+
 async def get_user_context(user_id):
-    """Retrieve user context from Redis or create a new context if it doesn't exist."""
     data = await redis.get(user_id)
     if data:
         return json.loads(data)
@@ -48,28 +61,26 @@ async def get_user_context(user_id):
 
 
 async def save_user_context(user_id, context):
-    """Save user context to Redis."""
     await redis.set(user_id, json.dumps(context))
 
 
 async def get_user_model(user_id):
-    """Retrieve user's model choice from Redis or default to the first model."""
     model = await redis.get(f"{user_id}_model")
     return model.decode() if model else DEFAULT_MODEL
 
 
 async def set_user_model(user_id, model):
-    """Save user's model choice to Redis and reset the user's context."""
     await redis.set(f"{user_id}_model", model)
-    await redis.delete(user_id)  # Clear context on model change
+    await redis.delete(user_id)
 
 
 async def get_client_for_model(model):
-    """Return the appropriate client based on the model choice."""
     if model == MODEL_CHOICES[0]:
         return groq_client
     elif model == MODEL_CHOICES[1]:
         return openai_client
+    elif model == MODEL_CHOICES[2]:  # Gemini model
+        return gemini_model
     else:
         raise ValueError(f"Unknown model: {model}")
 
@@ -96,8 +107,6 @@ async def reset(message: types.Message):
 
 @dp.message(Command("model"))
 async def choose_model(message: types.Message):
-    """Present model options to the user."""
-    # user_id = str(message.from_user.id)
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text=model, callback_data=f"set_model:{model}")] for model in
                          MODEL_CHOICES]
@@ -107,7 +116,6 @@ async def choose_model(message: types.Message):
 
 @dp.callback_query(F.data.startswith("set_model"))
 async def set_model_callback(query: types.CallbackQuery):
-    """Handle model selection and reset the context."""
     user_id = str(query.from_user.id)
     chosen_model = query.data.split(":")[1]
     await set_user_model(user_id, chosen_model)
@@ -122,7 +130,13 @@ async def welcome(message: types.Message):
     chosen_model = await get_user_model(user_id)
     client = await get_client_for_model(chosen_model)
 
-    context.append({"role": 'user', "content": message.text, "name": user_id})
+    # Gemini model uses a different format
+    if chosen_model == MODEL_CHOICES[2]:  # Gemini model
+        # Ensure the context is in the correct format for Gemini
+        context = [{"parts": [{"text": msg["content"]}]} for msg in context if "content" in msg]
+        context.append({"parts": [{"text": message.text}]})  # Append the message text in the `parts` key
+    else:  # For other models, keep the previous format
+        context.append({"role": 'user', "content": message.text, "name": user_id})
 
     if len(context) > 10:
         context = context[-10:]
@@ -133,12 +147,18 @@ async def welcome(message: types.Message):
                 model=chosen_model, stream=False, stop=None, max_tokens=4096,
                 messages=context, temperature=0.2, top_p=1, user=user_id
             )
-        else:  # OpenAI model
+            response_content = response.choices[0].message.content
+        elif chosen_model == MODEL_CHOICES[1]:  # OpenAI model
             response = await client.chat.completions.create(
                 model=chosen_model, messages=context, temperature=0.2, max_tokens=4096
             )
+            response_content = response.choices[0].message.content
+        elif chosen_model == MODEL_CHOICES[2]:  # Gemini model
+            # Ensure message sending in the correct format
+            chat_session = client.start_chat(history=context)
+            gemini_response = chat_session.send_message(message.text)
+            response_content = gemini_response.text
 
-        response_content = response.choices[0].message.content
     except Exception as e:
         response_content = f"Error: {str(e)}"
 

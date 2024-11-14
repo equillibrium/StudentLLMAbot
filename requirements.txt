@@ -4,3 +4,4 @@ python-dotenv
 redis
 httpx
 openai
+google-generativeai

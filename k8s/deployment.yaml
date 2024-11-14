@@ -2,28 +2,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ${PROJECT}
-  namespace: ${PROJECT}
+  name: "${PROJECT}"
+  namespace: "${PROJECT}"
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: ${PROJECT}
+      app: "${PROJECT}"
   template:
     metadata:
       labels:
-        app: ${PROJECT}
+        app: "${PROJECT}"
       annotations:
         kubernetes.io/change-cause: "${COMMIT_MESSAGE}"
     spec:
-      serviceAccountName: ${PROJECT}
+      serviceAccountName: "${PROJECT}"
       containers:
-      - name: ${PROJECT}
+      - name: "${PROJECT}"
         image: ${IMAGE}:latest
         envFrom:
         - secretRef:
-            name: ${PROJECT}
+            name: "${PROJECT}"
       - name: redis
         image: redis
