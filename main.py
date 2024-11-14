@@ -134,6 +134,9 @@ async def welcome(message: types.Message):
         # Ensure the context is in the correct format for Gemini
         context = [{"parts": [{"text": msg["content"]}]}
                    for msg in context if "content" in msg]
+        # Append the system message if not already present
+        if not any("system" in part for part in context):
+            context.insert(0, {"parts": [{"text": system_message}]})
         # Append the message text in the `parts` key
         context.append({"parts": [{"text": message.text}]})
     else:  # For other models, keep the previous format
