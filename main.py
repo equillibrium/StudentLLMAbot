@@ -181,7 +181,7 @@ async def welcome(message: types.Message):
                 await message.answer(text, parse_mode=None)
         else:
             chunks = [text[i:i + MAX_MESSAGE_LENGTH]
-                     for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+                      for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
             for chunk in chunks:
                 try:
                     await message.answer(chunk)
