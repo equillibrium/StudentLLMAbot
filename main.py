@@ -58,7 +58,8 @@ async def get_user_context(user_id):
     if data:
         return json.loads(data)
     # Возвращаем начальный контекст только если это первое обращение
-    return [{"role": "system", "content": system_message}]  # Убрали "name": user_id, так как он не нужен
+    # Убрали "name": user_id, так как он не нужен
+    return [{"role": "system", "content": system_message}]
 
 
 async def save_user_context(user_id, context):
@@ -175,7 +176,7 @@ async def chat(message: types.Message):
                     model=chosen_model, messages=context, temperature=0.2, max_tokens=4096
                 )
                 response_content = response.choices[0].message.content
-            
+
             # Добавляем ответ ассистента в контекст
             context.append({"role": "assistant", "content": response_content})
 
@@ -193,13 +194,15 @@ async def chat(message: types.Message):
             except Exception:
                 await message.answer(text, parse_mode=None)
         else:
-            chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+            chunks = [text[i:i + MAX_MESSAGE_LENGTH]
+                      for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
             for chunk in chunks:
                 try:
                     if "```" in chunk:
                         await message.answer(chunk)
                     else:
-                        escaped_chunk = chunk.replace('_', '\\_').replace('`', '\\`')
+                        escaped_chunk = chunk.replace(
+                            '_', '\\_').replace('`', '\\`')
                         await message.answer(escaped_chunk)
                 except Exception:
                     await message.answer(chunk, parse_mode=None)
