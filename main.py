@@ -130,6 +130,8 @@ async def welcome(message: types.Message):
     chosen_model = await get_user_model(user_id)
     client = await get_client_for_model(chosen_model)
 
+    await bot.send_chat_action(message.chat.id, 'typing')
+
     try:
         if chosen_model == MODEL_CHOICES[2]:  # Gemini model
             # Преобразуем контекст в формат для Gemini
@@ -170,13 +172,14 @@ async def welcome(message: types.Message):
                 response_content = response.choices[0].message.content
 
         # Экранируем специальные символы Markdown в тексте
-        text = response_content.replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
-        
+        text = response_content.replace('_', '\\_').replace(
+            '*', '\\*').replace('`', '\\`').replace('[', '\\[')
+
         if len(text) <= MAX_MESSAGE_LENGTH:
             await message.answer(text, parse_mode=ParseMode.MARKDOWN_V2)
         else:
             chunks = [text[i:i + MAX_MESSAGE_LENGTH]
-                     for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+                      for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
             for chunk in chunks:
                 await message.answer(chunk, parse_mode=ParseMode.MARKDOWN_V2)
 
