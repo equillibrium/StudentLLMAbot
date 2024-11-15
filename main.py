@@ -171,9 +171,11 @@ async def welcome(message: types.Message):
                 )
                 response_content = response.choices[0].message.content
 
-        # Экранируем специальные символы Markdown в тексте
-        text = response_content.replace('_', '\\_').replace(
-            '*', '\\*').replace('`', '\\`').replace('[', '\\[')
+        # Улучшенное экранирование специальных символов Markdown
+        special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+        text = response_content
+        for char in special_chars:
+            text = text.replace(char, f'\\{char}')
 
         if len(text) <= MAX_MESSAGE_LENGTH:
             await message.answer(text, parse_mode=ParseMode.MARKDOWN_V2)
