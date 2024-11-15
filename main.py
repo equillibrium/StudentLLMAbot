@@ -57,7 +57,8 @@ async def get_user_context(user_id):
     data = await redis.get(user_id)
     if data:
         return json.loads(data)
-    return [{"role": "system", "content": system_message, "name": user_id}]
+    # Возвращаем начальный контекст только если это первое обращение
+    return [{"role": "system", "content": system_message}]  # Убрали "name": user_id, так как он не нужен
 
 
 async def save_user_context(user_id, context):
@@ -71,7 +72,9 @@ async def get_user_model(user_id):
 
 async def set_user_model(user_id, model):
     await redis.set(f"{user_id}_model", model)
-    await redis.delete(user_id)
+    # При смене модели создаем новый контекст с system message
+    initial_context = [{"role": "system", "content": system_message}]
+    await save_user_context(user_id, initial_context)
 
 
 async def get_client_for_model(model):
@@ -124,7 +127,7 @@ async def set_model_callback(query: types.CallbackQuery):
 
 
 @dp.message(F.text)
-async def welcome(message: types.Message):
+async def chat(message: types.Message):
     user_id = str(message.from_user.id)
     context = await get_user_context(user_id)
     chosen_model = await get_user_model(user_id)
@@ -133,6 +136,9 @@ async def welcome(message: types.Message):
     await bot.send_chat_action(message.chat.id, 'typing')
 
     try:
+        # Добавляем сообщение пользователя в контекст сразу
+        context.append({"role": "user", "content": message.text})
+
         if chosen_model == MODEL_CHOICES[2]:  # Gemini model
             # Преобразуем контекст в формат для Gemini
             gemini_history = []
@@ -155,7 +161,6 @@ async def welcome(message: types.Message):
             response_content = gemini_response.text
 
             # Сохраняем новые сообщения в контекст
-            context.append({"role": "user", "content": message.text})
             context.append({"role": "assistant", "content": response_content})
 
         else:  # Groq или OpenAI
@@ -170,6 +175,9 @@ async def welcome(message: types.Message):
                     model=chosen_model, messages=context, temperature=0.2, max_tokens=4096
                 )
                 response_content = response.choices[0].message.content
+            
+            # Добавляем ответ ассистента в контекст
+            context.append({"role": "assistant", "content": response_content})
 
         text = response_content
 
