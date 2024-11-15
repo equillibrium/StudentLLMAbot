@@ -130,45 +130,44 @@ async def welcome(message: types.Message):
     chosen_model = await get_user_model(user_id)
     client = await get_client_for_model(chosen_model)
 
-    if chosen_model == MODEL_CHOICES[2]:  # Gemini model
-        # Преобразуем контекст для Gemini
-        gemini_context = []
-        # Пропускаем первое сообщение, так как system_instruction уже установлен
-        for msg in context[1:]:
-            role = "model" if msg["role"] == "assistant" else "user"
-            if "content" in msg:
-                gemini_context.append(
-                    {"role": role, "parts": [{"text": msg["content"]}]})
-            elif "parts" in msg:
-                gemini_context.append({"role": role, "parts": msg["parts"]})
-
-        context = gemini_context
-    else:
-        context.append(
-            {"role": 'user', "content": message.text, "name": user_id})
-
-    if len(context) > 10:
-        context = context[-10:]
-
     try:
-        if chosen_model == MODEL_CHOICES[0]:  # Groq model
-            response = await client.chat.completions.create(
-                model=chosen_model, stream=False, stop=None, max_tokens=4096,
-                messages=context, temperature=0.2, top_p=1, user=user_id
-            )
-            response_content = response.choices[0].message.content
-        elif chosen_model == MODEL_CHOICES[1]:  # OpenAI model
-            response = await client.chat.completions.create(
-                model=chosen_model, messages=context, temperature=0.2, max_tokens=4096
-            )
-            response_content = response.choices[0].message.content
-        elif chosen_model == MODEL_CHOICES[2]:  # Gemini model
-            chat_session = client.start_chat(history=context)
+        if chosen_model == MODEL_CHOICES[2]:  # Gemini model
+            # Преобразуем контекст в формат для Gemini
+            gemini_history = []
+            # Пропускаем первое системное сообщение
+            for msg in context[1:]:
+                if msg["role"] == "assistant":
+                    gemini_history.append({
+                        "role": "model",
+                        "parts": [{"text": msg["content"]}]
+                    })
+                elif msg["role"] == "user":
+                    gemini_history.append({
+                        "role": "user",
+                        "parts": [{"text": msg["content"]}]
+                    })
+            
+            # Создаем чат-сессию с историей
+            chat_session = client.start_chat(history=gemini_history)
             gemini_response = await chat_session.send_message_async(message.text)
             response_content = gemini_response.text
-            # Сохраняем ответ в правильном формате для Gemini
-            context.append({"role": "model", "parts": [
-                           {"text": response_content}]})
+            
+            # Сохраняем новые сообщения в контекст
+            context.append({"role": "user", "content": message.text})
+            context.append({"role": "assistant", "content": response_content})
+            
+        else:  # Groq или OpenAI
+            if chosen_model == MODEL_CHOICES[0]:  # Groq model
+                response = await client.chat.completions.create(
+                    model=chosen_model, stream=False, stop=None, max_tokens=4096,
+                    messages=context, temperature=0.2, top_p=1, user=user_id
+                )
+                response_content = response.choices[0].message.content
+            elif chosen_model == MODEL_CHOICES[1]:  # OpenAI model
+                response = await client.chat.completions.create(
+                    model=chosen_model, messages=context, temperature=0.2, max_tokens=4096
+                )
+                response_content = response.choices[0].message.content
 
     except Exception as e:
         response_content = f"Error: {str(e)}"
