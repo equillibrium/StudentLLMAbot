@@ -1,11 +1,9 @@
 import asyncio
-import json
 import logging
 import os
 import re
 
 import google.generativeai as genai
-import redis.asyncio as aioredis
 from aiogram import Bot, types, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -13,7 +11,10 @@ from aiogram.filters import Command
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from dotenv import load_dotenv
+from google.generativeai import GenerationConfig
 from groq import AsyncGroq
+
+from states import redis, save_user_context, get_user_model, get_user_context
 
 load_dotenv()
 
@@ -21,7 +22,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
           default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
-redis = aioredis.from_url(os.getenv('REDIS_URL'))
 dp = Dispatcher(storage=RedisStorage(redis))
 
 system_message = ("Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой. "
@@ -34,14 +34,15 @@ system_message = ("Ты ассистент, которого зовут StudentL
 groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'))
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 40,
-    "max_output_tokens": 8192,
-    "response_mime_type": "text/plain",
-}
-gemini_model = genai.GenerativeModel(
+generation_config = GenerationConfig(
+    temperature=1,
+    top_p=0.95,
+    top_k=40,
+    max_output_tokens=8192,
+    response_mime_type="text/plain"
+)
+
+gemini_client = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
     generation_config=generation_config,
     system_instruction=system_message
@@ -50,24 +51,6 @@ gemini_model = genai.GenerativeModel(
 MAX_MESSAGE_LENGTH = 4096
 MODEL_CHOICES = os.getenv('MODEL_CHOICES').split(',')
 DEFAULT_MODEL = MODEL_CHOICES[0]
-
-
-async def get_user_context(user_id):
-    data = await redis.get(user_id)
-    if data:
-        return json.loads(data)
-    # Возвращаем начальный контекст только если это первое обращение
-    # Убрали "name": user_id, так как он не нужен
-    return [{"role": "system", "content": system_message}]
-
-
-async def save_user_context(user_id, context):
-    await redis.set(user_id, json.dumps(context))
-
-
-async def get_user_model(user_id):
-    model = await redis.get(f"{user_id}_model")
-    return model.decode() if model else DEFAULT_MODEL
 
 
 async def set_user_model(user_id, model):
@@ -83,7 +66,7 @@ async def get_client_for_model(model):
     elif model == MODEL_CHOICES[1]:
         return groq_client
     elif model == MODEL_CHOICES[2]:  # Gemini model
-        return gemini_model
+        return gemini_client
     else:
         raise ValueError(f"Unknown model: {model}")
 
@@ -105,7 +88,7 @@ async def replace_asterisk(text):
 @dp.message(Command("start"))
 async def start(message: types.Message):
     user_id = str(message.from_user.id)
-    chosen_model = await get_user_model(user_id)
+    chosen_model = await get_user_model(user_id, default_model=DEFAULT_MODEL)
     text = (f"Привет, {message.from_user.first_name}! Я Student LLMAbot. Твой Telegram ID: {user_id}\n"
             f"Текущая модель: {chosen_model}\nНапиши мне запрос, и я постараюсь помочь!")
     await message.answer(text)
@@ -143,9 +126,10 @@ async def set_model_callback(query: types.CallbackQuery):
 @dp.message(F.text)
 async def chat(message: types.Message):
     user_id = str(message.from_user.id)
-    context = await get_user_context(user_id)
-    chosen_model = await get_user_model(user_id)
+    context = await get_user_context(user_id, system_message=system_message)
+    chosen_model = await get_user_model(user_id, default_model=DEFAULT_MODEL)
     client = await get_client_for_model(chosen_model)
+    response_content = ""
 
     await bot.send_chat_action(message.chat.id, 'typing')
 
