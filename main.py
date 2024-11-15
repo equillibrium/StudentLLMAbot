@@ -174,15 +174,25 @@ async def welcome(message: types.Message):
         text = response_content
 
         if len(text) <= MAX_MESSAGE_LENGTH:
-            await message.answer(text)
+            try:
+                await message.answer(text)
+            except Exception:
+                # Если не удалось отправить с markdown, пробуем без форматирования
+                await message.answer(text, parse_mode=None)
         else:
             chunks = [text[i:i + MAX_MESSAGE_LENGTH]
-                      for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+                     for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
             for chunk in chunks:
-                await message.answer(chunk)
+                try:
+                    await message.answer(chunk)
+                except Exception:
+                    # Если не удалось отправить с markdown, пробуем без форматирования
+                    await message.answer(chunk, parse_mode=None)
+
+        # Сохраняем контекст только после успешной отправки
+        await save_user_context(user_id, context)
 
     except Exception as e:
-        # В случае ошибки отправляем сообщение без форматирования
         error_text = f"Произошла ошибка: {str(e)}"
         await message.answer(error_text, parse_mode=None)
 
