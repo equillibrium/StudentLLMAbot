@@ -2,7 +2,9 @@ import asyncio
 import json
 import logging
 import os
+import re
 
+import google.generativeai as genai
 import redis.asyncio as aioredis
 from aiogram import Bot, types, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
@@ -12,8 +14,6 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from dotenv import load_dotenv
 from groq import AsyncGroq
-from openai import AsyncOpenAI
-import google.generativeai as genai
 
 load_dotenv()
 
@@ -32,14 +32,13 @@ system_message = ("Ты ассистент, которого зовут StudentL
 
 # Initialize clients for Groq, OpenAI, and Gemini
 groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'))
-openai_client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 generation_config = {
-    "temperature": 0.2,
+    "temperature": 1,
     "top_p": 0.95,
     "top_k": 40,
-    "max_output_tokens": 4096,
+    "max_output_tokens": 8192,
     "response_mime_type": "text/plain",
 }
 gemini_model = genai.GenerativeModel(
@@ -82,11 +81,25 @@ async def get_client_for_model(model):
     if model == MODEL_CHOICES[0]:
         return groq_client
     elif model == MODEL_CHOICES[1]:
-        return openai_client
+        return groq_client
     elif model == MODEL_CHOICES[2]:  # Gemini model
         return gemini_model
     else:
         raise ValueError(f"Unknown model: {model}")
+
+
+async def replace_asterisk(text):
+    # Step 1: Find code blocks and temporarily replace '*' inside them with a placeholder
+    text_with_placeholder = re.sub(r'```.*?```', lambda m: m.group(0).replace('*', '<<ASTERISK>>'), text,
+                                   flags=re.DOTALL)
+
+    # Step 2: Replace only non-double '*' occurrences outside of code blocks
+    text_processed = re.sub(r'(?<!\*)\*(?!\*)', '\\*', text_with_placeholder)
+
+    # Step 3: Restore the placeholders back to '*'
+    result = text_processed.replace('<<ASTERISK>>', '*')
+
+    return result
 
 
 @dp.message(Command("start"))
@@ -167,13 +180,14 @@ async def chat(message: types.Message):
         else:  # Groq или OpenAI
             if chosen_model == MODEL_CHOICES[0]:  # Groq model
                 response = await client.chat.completions.create(
-                    model=chosen_model, stream=False, stop=None, max_tokens=4096,
-                    messages=context, temperature=0.2, top_p=1, user=user_id
+                    model=chosen_model, stream=False, stop=None, max_tokens=8000,
+                    messages=context, temperature=1, top_p=0.95
                 )
                 response_content = response.choices[0].message.content
             elif chosen_model == MODEL_CHOICES[1]:  # OpenAI model
                 response = await client.chat.completions.create(
-                    model=chosen_model, messages=context, temperature=0.2, max_tokens=4096
+                    model=chosen_model, stream=False, stop=None, max_tokens=8000,
+                    messages=context, temperature=1, top_p=0.95
                 )
                 response_content = response.choices[0].message.content
 
@@ -184,27 +198,18 @@ async def chat(message: types.Message):
 
         if len(text) <= MAX_MESSAGE_LENGTH:
             try:
-                # Проверяем наличие блоков кода
-                if "```" in text:
-                    await message.answer(text)
-                else:
-                    # Экранируем только подчеркивания и одиночные обратные кавычки
-                    escaped_text = text.replace('_', '\\_').replace('`', '\\`')
-                    await message.answer(escaped_text)
-            except Exception:
+                await message.answer(await replace_asterisk(text))
+            except Exception as e:
+                print(str(e))
                 await message.answer(text, parse_mode=None)
         else:
             chunks = [text[i:i + MAX_MESSAGE_LENGTH]
                       for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
             for chunk in chunks:
                 try:
-                    if "```" in chunk:
-                        await message.answer(chunk)
-                    else:
-                        escaped_chunk = chunk.replace(
-                            '_', '\\_').replace('`', '\\`')
-                        await message.answer(escaped_chunk)
-                except Exception:
+                    await message.answer(await replace_asterisk(text))
+                except Exception as e:
+                    print(str(e))
                     await message.answer(chunk, parse_mode=None)
 
         # Сохраняем контекст только после успешной отправки
