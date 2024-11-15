@@ -3,17 +3,16 @@ import logging
 import os
 import re
 
-import google.generativeai as genai
 from aiogram import Bot, types, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile
 from dotenv import load_dotenv
-from google.generativeai import GenerationConfig
-from groq import AsyncGroq
 
+from app.clients import system_message, groq_client, gemini_client
+from app.files import convert_to_pdf
 from states import redis, save_user_context, get_user_model, get_user_context
 
 load_dotenv()
@@ -23,30 +22,6 @@ logging.basicConfig(level=logging.DEBUG)
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
           default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
 dp = Dispatcher(storage=RedisStorage(redis))
-
-system_message = ("Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой. "
-                  "Отвечай всегда на русском языке, не переходи на английский, если не просят. "
-                  "Если к тебе обратятся на английском языке или попросят помочь с английским, "
-                  "можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах, "
-                  "помогай студентам решать их проблемы с учебой.")
-
-# Initialize clients for Groq, OpenAI, and Gemini
-groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'))
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-generation_config = GenerationConfig(
-    temperature=1,
-    top_p=0.95,
-    top_k=40,
-    max_output_tokens=8192,
-    response_mime_type="text/plain"
-)
-
-gemini_client = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    generation_config=generation_config,
-    system_instruction=system_message
-)
 
 MAX_MESSAGE_LENGTH = 4096
 MODEL_CHOICES = os.getenv('MODEL_CHOICES').split(',')
@@ -122,6 +97,25 @@ async def set_model_callback(query: types.CallbackQuery):
     await query.answer(f"Модель '{chosen_model}' выбрана и контекст очищен.")
     await query.message.edit_text(f"Текущая модель установлена на '{chosen_model}'.")
 
+
+@dp.message(F.document)
+async def file_handler(message: types.Message):
+    file = {
+        #"path": f"/tmp/{message.from_user.id}/",
+        "path": f"c:\\temp\\",
+        "name": message.document.file_name,
+        "id": message.document.file_id,
+        "mimetype": message.document.mime_type,
+    }
+
+    await bot.send_chat_action(message.chat.id, 'upload_document')
+
+    await bot.download(file=file["id"], destination=file["path"]+file["name"])
+    if "pdf" not in file["mimetype"]:
+        pdf_name = await convert_to_pdf(file=file)
+        with open(file["path"]+pdf_name, 'rb') as f:
+            pdf = BufferedInputFile(f.read(), filename=pdf_name)
+            await message.answer_document(pdf)
 
 @dp.message(F.text)
 async def chat(message: types.Message):

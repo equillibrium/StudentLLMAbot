@@ -5,3 +5,4 @@ redis
 httpx
 openai
 google-generativeai
+pylovepdf

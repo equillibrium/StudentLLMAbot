@@ -35,7 +35,7 @@ RUN adduser \
 USER appuser
 
 # Copy the source code into the container.
-COPY . .
+COPY ./app .
 
 RUN flake8 --ignore=E501,F401,E402,W605
 
