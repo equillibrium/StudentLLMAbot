@@ -171,19 +171,15 @@ async def welcome(message: types.Message):
                 )
                 response_content = response.choices[0].message.content
 
-        # Улучшенное экранирование специальных символов Markdown
-        # special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
         text = response_content
-        # for char in special_chars:
-        #     text = text.replace(char, f'\\{char}')
 
         if len(text) <= MAX_MESSAGE_LENGTH:
-            await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+            await message.answer(text)
         else:
             chunks = [text[i:i + MAX_MESSAGE_LENGTH]
                       for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
             for chunk in chunks:
-                await message.answer(chunk, parse_mode=ParseMode.MARKDOWN)
+                await message.answer(chunk)
 
     except Exception as e:
         # В случае ошибки отправляем сообщение без форматирования
