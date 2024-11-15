@@ -146,16 +146,16 @@ async def welcome(message: types.Message):
                         "role": "user",
                         "parts": [{"text": msg["content"]}]
                     })
-            
+
             # Создаем чат-сессию с историей
             chat_session = client.start_chat(history=gemini_history)
             gemini_response = await chat_session.send_message_async(message.text)
             response_content = gemini_response.text
-            
+
             # Сохраняем новые сообщения в контекст
             context.append({"role": "user", "content": message.text})
             context.append({"role": "assistant", "content": response_content})
-            
+
         else:  # Groq или OpenAI
             if chosen_model == MODEL_CHOICES[0]:  # Groq model
                 response = await client.chat.completions.create(
