@@ -175,18 +175,22 @@ async def welcome(message: types.Message):
 
         if len(text) <= MAX_MESSAGE_LENGTH:
             try:
-                await message.answer(text)
+                # Добавляем экранирование символов Markdown
+                escaped_text = text.replace('_', '\\_').replace(
+                    '*', '\\*').replace('`', '\\`')
+                await message.answer(escaped_text)
             except Exception:
-                # Если не удалось отправить с markdown, пробуем без форматирования
                 await message.answer(text, parse_mode=None)
         else:
             chunks = [text[i:i + MAX_MESSAGE_LENGTH]
                       for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
             for chunk in chunks:
                 try:
-                    await message.answer(chunk)
+                    # Экранируем символы Markdown в каждом чанке
+                    escaped_chunk = chunk.replace('_', '\\_').replace(
+                        '*', '\\*').replace('`', '\\`')
+                    await message.answer(escaped_chunk)
                 except Exception:
-                    # Если не удалось отправить с markdown, пробуем без форматирования
                     await message.answer(chunk, parse_mode=None)
 
         # Сохраняем контекст только после успешной отправки
