@@ -175,21 +175,24 @@ async def welcome(message: types.Message):
 
         if len(text) <= MAX_MESSAGE_LENGTH:
             try:
-                # Добавляем экранирование символов Markdown
-                escaped_text = text.replace('_', '\\_').replace(
-                    '*', '\\*').replace('`', '\\`')
-                await message.answer(escaped_text)
+                # Проверяем наличие блоков кода
+                if "```" in text:
+                    await message.answer(text)
+                else:
+                    # Экранируем только подчеркивания и одиночные обратные кавычки
+                    escaped_text = text.replace('_', '\\_').replace('`', '\\`')
+                    await message.answer(escaped_text)
             except Exception:
                 await message.answer(text, parse_mode=None)
         else:
-            chunks = [text[i:i + MAX_MESSAGE_LENGTH]
-                      for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+            chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
             for chunk in chunks:
                 try:
-                    # Экранируем символы Markdown в каждом чанке
-                    escaped_chunk = chunk.replace('_', '\\_').replace(
-                        '*', '\\*').replace('`', '\\`')
-                    await message.answer(escaped_chunk)
+                    if "```" in chunk:
+                        await message.answer(chunk)
+                    else:
+                        escaped_chunk = chunk.replace('_', '\\_').replace('`', '\\`')
+                        await message.answer(escaped_chunk)
                 except Exception:
                     await message.answer(chunk, parse_mode=None)
 
