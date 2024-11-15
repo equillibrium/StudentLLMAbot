@@ -169,22 +169,21 @@ async def welcome(message: types.Message):
                 )
                 response_content = response.choices[0].message.content
 
+        # Экранируем специальные символы Markdown в тексте
+        text = response_content.replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
+        
+        if len(text) <= MAX_MESSAGE_LENGTH:
+            await message.answer(text, parse_mode=ParseMode.MARKDOWN_V2)
+        else:
+            chunks = [text[i:i + MAX_MESSAGE_LENGTH]
+                     for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+            for chunk in chunks:
+                await message.answer(chunk, parse_mode=ParseMode.MARKDOWN_V2)
+
     except Exception as e:
-        response_content = f"Error: {str(e)}"
-
-    if chosen_model != MODEL_CHOICES[2]:
-        context.append({"role": 'assistant', "content": response_content})
-
-    await save_user_context(user_id, context)
-
-    text = response_content or "Произошла ошибка при получении ответа."
-    if len(text) <= MAX_MESSAGE_LENGTH:
-        await message.answer(text)
-    else:
-        chunks = [text[i:i + MAX_MESSAGE_LENGTH]
-                  for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
-        for chunk in chunks:
-            await message.answer(chunk)
+        # В случае ошибки отправляем сообщение без форматирования
+        error_text = f"Произошла ошибка: {str(e)}"
+        await message.answer(error_text, parse_mode=None)
 
 
 async def main():
