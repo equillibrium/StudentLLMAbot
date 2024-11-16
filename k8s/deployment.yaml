@@ -26,4 +26,15 @@ spec:
         - secretRef:
             name: "${PROJECT}"
       - name: redis
-        image: redis
+        image: redis:latest
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 6379
+        volumeMounts:
+          - mountPath: /data
+            name: redis-data
+      volumes:
+        - name: redis-data
+          hostPath:
+            path: /data/redis
+            type: DirectoryOrCreate

@@ -22,6 +22,18 @@ async def save_user_context(user_id, context):
     await redis.set(user_id, json.dumps(context))
 
 
+async def get_user_files(user_id):
+    data = await redis.get(f"{user_id}_files")
+    if data:
+        return json.loads(data)
+    else:
+        return []
+
+
+async def save_user_files(user_id, data):
+    await redis.set(f"{user_id}_files", json.dumps(data))
+
+
 async def get_user_model(user_id, default_model):
     model = await redis.get(f"{user_id}_model")
     return model.decode() if model else default_model

@@ -8,12 +8,14 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from dotenv import load_dotenv
 
-from app.clients import system_message, groq_client, gemini_client
-from app.files import convert_to_pdf
+from clients import system_message, groq_client, gemini_client
+from files import convert_to_pdf, upload_to_gemini, wait_for_files_active, get_from_gemini
+from files import list_gemini_files
 from states import redis, save_user_context, get_user_model, get_user_context
+from states import save_user_files, get_user_files
 
 load_dotenv()
 
@@ -98,104 +100,174 @@ async def set_model_callback(query: types.CallbackQuery):
     await query.message.edit_text(f"Текущая модель установлена на '{chosen_model}'.")
 
 
-@dp.message(F.document)
-async def file_handler(message: types.Message):
-    file = {
-        #"path": f"/tmp/{message.from_user.id}/",
-        "path": f"c:\\temp\\",
-        "name": message.document.file_name,
-        "id": message.document.file_id,
-        "mimetype": message.document.mime_type,
-    }
-
-    await bot.send_chat_action(message.chat.id, 'upload_document')
-
-    await bot.download(file=file["id"], destination=file["path"]+file["name"])
-    if "pdf" not in file["mimetype"]:
-        pdf_name = await convert_to_pdf(file=file)
-        with open(file["path"]+pdf_name, 'rb') as f:
-            pdf = BufferedInputFile(f.read(), filename=pdf_name)
-            await message.answer_document(pdf)
-
-@dp.message(F.text)
-async def chat(message: types.Message):
+@dp.message(F.text | F.document)
+async def chat_handler(message: types.Message):
     user_id = str(message.from_user.id)
     context = await get_user_context(user_id, system_message=system_message)
     chosen_model = await get_user_model(user_id, default_model=DEFAULT_MODEL)
     client = await get_client_for_model(chosen_model)
-    response_content = ""
+    uploaded_file = ""
+    status = ""
 
-    await bot.send_chat_action(message.chat.id, 'typing')
+    # Если есть документ, сначала обрабатываем его через Gemini
+    if message.document:
+        await bot.send_chat_action(message.chat.id, 'upload_document')
 
-    try:
-        # Добавляем сообщение пользователя в контекст сразу
-        context.append({"role": "user", "content": message.text})
+        files_dir = f"c:\\temp\\{user_id}\\" if os.name == "nt" else f"/tmp/{user_id}/"
+        try:
+            os.mkdir(files_dir)
+        except FileExistsError as e:
+            print(str(e))
 
-        if chosen_model == MODEL_CHOICES[2]:  # Gemini model
-            # Преобразуем контекст в формат для Gemini
-            gemini_history = []
-            # Пропускаем первое системное сообщение
-            for msg in context[1:]:
-                if msg["role"] == "assistant":
+        file = {
+            "path": files_dir,
+            "name": message.document.file_name,
+            "id": message.document.file_id,
+            "mimetype": message.document.mime_type,
+            "size": message.document.file_size
+        }
+
+        processed_files = await get_user_files(user_id)
+        gemini_saved_documents = await list_gemini_files()
+
+        print("Processed files", processed_files)
+        if processed_files:
+            for pf in processed_files:
+                if pf["name"] == file["name"] and pf["size"] == file['size'] and pf["mimetype"] == file["mimetype"]:
+                    print("File already processed")
+                    file['pdf_name'] = pf.get("pdf_name", "")
+        if gemini_saved_documents:
+            for gsd in gemini_saved_documents:
+                if gsd.display_name == file.get('pdf_name', ''):
+                    print("File already uploaded")
+                    file['gemini_name'] = gsd.name
+
+        if not file.get('gemini_name', '') and not file.get('pdf_name', ''):
+            await bot.download(file=file["id"], destination=file["path"] + file["name"])
+        status = await message.answer("Файл получен!")
+        await bot.send_chat_action(message.chat.id, 'upload_document')
+
+        if "pdf" not in file.get("mimetype", "") and not file.get("pdf_name", ""):
+            await bot.edit_message_text("Конвертирую файл в pdf...", message_id=status.message_id,
+                                        chat_id=message.chat.id)
+            await bot.send_chat_action(message.chat.id, 'upload_document')
+            try:
+                pdf_name = await convert_to_pdf(file=file)
+                await bot.edit_message_text("Файл успешно сконвертирован в pdf!", message_id=status.message_id,
+                                            chat_id=message.chat.id)
+
+            except Exception as e:
+                await message.answer(str(e))
+                return
+
+            file["pdf_name"] = pdf_name
+
+        else:
+            file["pdf_name"] = file["name"]
+            await save_user_files(user_id, [file])
+
+        if not file.get('gemini_name', ''):
+            await bot.edit_message_text("Загрузка файла в Gemini...", message_id=status.message_id,
+                                        chat_id=message.chat.id)
+            await bot.send_chat_action(message.chat.id, 'upload_document')
+            try:
+                uploaded_file = await upload_to_gemini(path=file["path"] + file['pdf_name'],
+                                                       mime_type='application/pdf')
+            except Exception as e:
+                await message.answer(str(e))
+            await bot.edit_message_text("Обработка файла в Gemini...", message_id=status.message_id,
+                                        chat_id=message.chat.id)
+            await bot.send_chat_action(message.chat.id, 'typing')
+            await wait_for_files_active([uploaded_file])
+            file['gemini_name'] = uploaded_file.name
+        else:
+            uploaded_file = await get_from_gemini(file['gemini_name'])
+
+        processed_files.append(file)
+        await save_user_files(user_id, processed_files)
+
+        chosen_model = MODEL_CHOICES[2]
+        await set_user_model(user_id, chosen_model)
+        client = await get_client_for_model(chosen_model)
+
+    # Продолжаем обработку с выбранной моделью
+    if chosen_model == MODEL_CHOICES[2]:  # Gemini model
+        gemini_history = []
+        for msg in context[1:]:
+            if msg["role"] == "assistant":
+                gemini_history.append({
+                    "role": "model",
+                    "parts": [{"text": msg["content"]}]
+                })
+            elif msg["role"] == "user":
+                if type(msg["content"]) is list:
+                    uploaded_file = await get_from_gemini(msg["content"][0])
                     gemini_history.append({
-                        "role": "model",
-                        "parts": [{"text": msg["content"]}]
+                        "role": "user",
+                        "parts": [uploaded_file, msg["content"][1]]
                     })
-                elif msg["role"] == "user":
+                else:
                     gemini_history.append({
                         "role": "user",
                         "parts": [{"text": msg["content"]}]
                     })
 
-            # Создаем чат-сессию с историей
-            chat_session = client.start_chat(history=gemini_history)
+        chat_session = client.start_chat(history=gemini_history)
+
+        if message.document:
+            await bot.edit_message_text("Gemini подготавливает ответ, может занять долгое время....",
+                                        message_id=status.message_id,
+                                        chat_id=message.chat.id)
+            await bot.send_chat_action(message.chat.id, 'typing')
+            print("Sending file:", uploaded_file)
+            gemini_response = await chat_session.send_message_async(
+                [uploaded_file, message.caption or "Выполни задания в этом документе"]
+            )
+        else:
+            await bot.send_chat_action(message.chat.id, 'typing')
             gemini_response = await chat_session.send_message_async(message.text)
-            response_content = gemini_response.text
+        response_content = gemini_response.text
+    else:  # Groq или OpenAI
+        response = await client.chat.completions.create(
+            model=chosen_model,
+            stream=False,
+            stop=None,
+            max_tokens=8000,
+            messages=context,
+            temperature=1,
+            top_p=0.95
+        )
+        response_content = response.choices[0].message.content
 
-            # Сохраняем новые сообщения в контекст
-            context.append({"role": "assistant", "content": response_content})
+    # Добавляем вопрос и ответ в контекст
+    if message.document:
+        context.append({"role": "user", "content": [
+            uploaded_file.name, message.caption or "Выполни задания в этом документе"
+        ]})
+    else:
+        context.append({"role": "user", "content": message.text})
+    context.append({"role": "assistant", "content": response_content})
 
-        else:  # Groq или OpenAI
-            if chosen_model == MODEL_CHOICES[0]:  # Groq model
-                response = await client.chat.completions.create(
-                    model=chosen_model, stream=False, stop=None, max_tokens=8000,
-                    messages=context, temperature=1, top_p=0.95
-                )
-                response_content = response.choices[0].message.content
-            elif chosen_model == MODEL_CHOICES[1]:  # OpenAI model
-                response = await client.chat.completions.create(
-                    model=chosen_model, stream=False, stop=None, max_tokens=8000,
-                    messages=context, temperature=1, top_p=0.95
-                )
-                response_content = response.choices[0].message.content
+    text = await replace_asterisk(response_content)
 
-            # Добавляем ответ ассистента в контекст
-            context.append({"role": "assistant", "content": response_content})
-
-        text = response_content
-
-        if len(text) <= MAX_MESSAGE_LENGTH:
+    if len(text) <= MAX_MESSAGE_LENGTH:
+        try:
+            await message.answer(text)
+        except Exception as e:
+            print(str(e))
+            await message.answer(text, parse_mode=None)
+    else:
+        chunks = [text[i:i + MAX_MESSAGE_LENGTH]
+                  for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+        for chunk in chunks:
             try:
-                await message.answer(await replace_asterisk(text))
+                await message.answer(text)
             except Exception as e:
                 print(str(e))
-                await message.answer(text, parse_mode=None)
-        else:
-            chunks = [text[i:i + MAX_MESSAGE_LENGTH]
-                      for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
-            for chunk in chunks:
-                try:
-                    await message.answer(await replace_asterisk(text))
-                except Exception as e:
-                    print(str(e))
-                    await message.answer(chunk, parse_mode=None)
+                await message.answer(chunk, parse_mode=None)
 
-        # Сохраняем контекст только после успешной отправки
-        await save_user_context(user_id, context)
-
-    except Exception as e:
-        error_text = f"Произошла ошибка: {str(e)}"
-        await message.answer(error_text, parse_mode=None)
+    # Сохраняем контекст только после успешной отправки
+    await save_user_context(user_id, context)
 
 
 async def main():

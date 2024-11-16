@@ -6,6 +6,8 @@ from groq import AsyncGroq
 
 load_dotenv()
 
+MODEL_CHOICES = os.getenv('MODEL_CHOICES').split(',')
+
 system_message = ("Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой. "
                   "Отвечай всегда на русском языке, не переходи на английский, если не просят. "
                   "Если к тебе обратятся на английском языке или попросят помочь с английским, "
@@ -14,7 +16,7 @@ system_message = ("Ты ассистент, которого зовут StudentL
 
 # Initialize clients for Groq, OpenAI, and Gemini
 groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'))
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"), transport="grpc_asyncio")
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 generation_config = genai.GenerationConfig(
     temperature=1,
@@ -25,7 +27,11 @@ generation_config = genai.GenerationConfig(
 )
 
 gemini_client = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name=MODEL_CHOICES[2],
     generation_config=generation_config,
     system_instruction=system_message
 )
+
+
+async def get_gemini_response():
+    gemini_client.start_chat()
