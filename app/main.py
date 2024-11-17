@@ -128,7 +128,13 @@ async def set_model_callback(query: types.CallbackQuery):
     await query.message.edit_text(f"Текущая модель установлена на '{chosen_model}'.")
 
 
-@dp.message(F.text | F.document)
+# @dp.message(F.photo)
+# async def photo_handler(message: types.Message) -> None:
+#     await message.answer("Отправь фото без сжатия, пока сжатые фото не поддерживаются...")
+#     print(message.photo)
+#     print(await bot.get_file(message.photo[-1].file_id))
+
+@dp.message(F.text | F.document | F.photo)
 async def chat_handler(message: types.Message):
     user_id = str(message.from_user.id)
     context = await get_user_context(user_id, system_message=system_message)
@@ -138,10 +144,11 @@ async def chat_handler(message: types.Message):
     status = ""
     gemini_response = ""
     gemini_message = ""
-    local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv("TELEGRAM_BOT_TOKEN")}\\documents\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/documents/"
+    folder_type = "photos" if message.photo else "documents"
+    local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv("TELEGRAM_BOT_TOKEN")}\\{folder_type}\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/{folder_type}/"
 
     # Если есть документ, сначала обрабатываем его через Gemini
-    if message.document:
+    if message.document or message.photo:
         await bot.send_chat_action(message.chat.id, 'upload_document')
 
         # files_dir = f"c:\\temp\\{user_id}\\" if os.name == "nt" else f"/tmp/{user_id}/"
@@ -149,14 +156,23 @@ async def chat_handler(message: types.Message):
         #     os.mkdir(files_dir)
         # except FileExistsError as e:
         #     print(str(e))
-
-        file = {
-            "path": local_path + user_id,
-            "name": message.document.file_name,
-            "id": message.document.file_id,
-            "mimetype": message.document.mime_type,
-            "size": message.document.file_size
-        }
+        if message.document:
+            file = {
+                "path": local_path + user_id,
+                "name": message.document.file_name,
+                "id": message.document.file_id,
+                "mimetype": message.document.mime_type,
+                "size": message.document.file_size
+            }
+        elif message.photo:
+            print(message)
+            file = {
+                "path": local_path + user_id,
+                "name": message.photo[-1].file_id + ".jpg",
+                "id": message.photo[-1].file_id,
+                "mimetype": "image/jpeg",
+                "size": message.photo[-1].file_size
+            }
 
         processed_files = await get_user_files(user_id)
 
@@ -176,9 +192,9 @@ async def chat_handler(message: types.Message):
 
         if not file.get('gemini_name', '') and not file.get('pdf_name', ''):
             print("Downloading file from telegram...")
-            # await bot.download(file=file["id"], destination=file["path"] + file["name"])
             try:
                 dl = await bot.get_file(file["id"])
+                print(dl)
                 src_name = os.path.basename(dl.file_path)
 
                 try:
@@ -186,7 +202,7 @@ async def chat_handler(message: types.Message):
                 except FileExistsError:
                     print("Don't need to create folder")
 
-                shutil.move(local_path + src_name, os.path.join(file["path"], message.document.file_name))
+                shutil.move(local_path + src_name, os.path.join(file["path"], file["name"]))
             except Exception as e:
                 await message.answer(str(e))
 
@@ -272,7 +288,7 @@ async def chat_handler(message: types.Message):
 
         chat_session = client.start_chat(history=gemini_history)
 
-        if message.document:
+        if message.document or message.photo:
             await bot.edit_message_text("Gemini подготавливает ответ, может занять долгое время....",
                                         message_id=status.message_id,
                                         chat_id=message.chat.id)

@@ -51,6 +51,7 @@ async def wait_for_files_active(files):
     This implementation uses a simple blocking polling loop. Production code
     should probably employ a more sophisticated approach.
     """
+    print(files)
     print("Waiting for file processing...")
     for name in (file.name for file in files):
         file = genai.get_file(name)
