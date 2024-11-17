@@ -14,6 +14,7 @@ system_message = ("Ты ассистент, которого зовут StudentL
                   "можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах, "
                   "помогай студентам решать их проблемы с учебой.")
 
+
 async def get_client_for_model(model):
     if model == MODEL_CHOICES[0]:
         groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'))
@@ -56,5 +57,3 @@ async def get_client_for_model(model):
         return gemini_client
     else:
         raise ValueError(f"Unknown model: {model}")
-
-
