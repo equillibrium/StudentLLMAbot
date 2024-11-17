@@ -22,6 +22,9 @@ spec:
       containers:
       - name: "${PROJECT}"
         image: ${IMAGE}:latest
+        volumeMounts:
+          - name: bot-data
+            mountPath: /var/lib/telegram-bot-api
         envFrom:
         - secretRef:
             name: "${PROJECT}"
@@ -33,8 +36,18 @@ spec:
         volumeMounts:
           - mountPath: /data
             name: redis-data
+      - name: local-api-server
+        image: aiogram/telegram-bot-api:latest
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 8081
+        volumeMounts:
+          - name: bot-data
+            mountPath: /var/lib/telegram-bot-api
       volumes:
         - name: redis-data
           hostPath:
             path: /data/redis
             type: DirectoryOrCreate
+        - name: bot-data
+          emptyDir: {}
