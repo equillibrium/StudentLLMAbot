@@ -26,8 +26,10 @@ load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 class TestState(StatesGroup):
     test = State()
+
 
 api_server = TelegramAPIServer.from_base('http://localhost:8081', is_local=True)
 
@@ -88,6 +90,7 @@ async def test_state(message: types.Message, state: FSMContext) -> None:
     print(await bot.get_file(message.document.file_id))
     print(message.document)
     print(os.listdir("/var/lib/telegram-bot-api/7003307123:AAHttc01TgMOtXxeCSsEsZmAK0aoRjOBF-0/documents"))
+
 
 @dp.message(Command("test"))
 async def test(message: types.Message, state: FSMContext):
