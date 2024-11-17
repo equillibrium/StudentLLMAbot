@@ -2,13 +2,14 @@ import asyncio
 import logging
 import os
 import re
+import shutil
 
 from aiogram import Bot, types, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile
 from dotenv import load_dotenv
 
 from clients import system_message, groq_client, gemini_client
@@ -108,6 +109,8 @@ async def chat_handler(message: types.Message):
     client = await get_client_for_model(chosen_model)
     uploaded_file = ""
     status = ""
+    gemini_response = ""
+    gemini_message = ""
 
     # Если есть документ, сначала обрабатываем его через Gemini
     if message.document:
@@ -143,16 +146,20 @@ async def chat_handler(message: types.Message):
                     file['gemini_name'] = gsd.name
 
         if not file.get('gemini_name', '') and not file.get('pdf_name', ''):
+            print("Downloading file from telegram...")
             await bot.download(file=file["id"], destination=file["path"] + file["name"])
         status = await message.answer("Файл получен!")
         await bot.send_chat_action(message.chat.id, 'upload_document')
 
-        if "pdf" not in file.get("mimetype", "") and not file.get("pdf_name", ""):
+        if "pdf" not in file.get("mimetype", "") and not file.get("pdf_name", "") and not file.get("gemini_name", ""):
             await bot.edit_message_text("Конвертирую файл в pdf...", message_id=status.message_id,
                                         chat_id=message.chat.id)
             await bot.send_chat_action(message.chat.id, 'upload_document')
             try:
                 pdf_name = await convert_to_pdf(file=file)
+                with open(f"{file['path']}{pdf_name}", 'rb') as f:
+                    pdf_file = BufferedInputFile(f.read(), filename=pdf_name)
+                    await message.answer_document(pdf_file, caption="Вот документ в PDF для повторного использования, если необходимо. Я понимаю только PDF! Ответ подготавливается...")
                 await bot.edit_message_text("Файл успешно сконвертирован в pdf!", message_id=status.message_id,
                                             chat_id=message.chat.id)
 
@@ -189,6 +196,9 @@ async def chat_handler(message: types.Message):
         chosen_model = MODEL_CHOICES[2]
         await set_user_model(user_id, chosen_model)
         client = await get_client_for_model(chosen_model)
+    else:
+        # If msg is not document
+        context.append({"role": "user", "content": message.text})
 
     # Продолжаем обработку с выбранной моделью
     if chosen_model == MODEL_CHOICES[2]:  # Gemini model
@@ -201,10 +211,10 @@ async def chat_handler(message: types.Message):
                 })
             elif msg["role"] == "user":
                 if type(msg["content"]) is list:
-                    uploaded_file = await get_from_gemini(msg["content"][0])
+                    old_uploaded_file = await get_from_gemini(msg["content"][0])
                     gemini_history.append({
                         "role": "user",
-                        "parts": [uploaded_file, msg["content"][1]]
+                        "parts": [old_uploaded_file, msg["content"][1]]
                     })
                 else:
                     gemini_history.append({
@@ -220,32 +230,55 @@ async def chat_handler(message: types.Message):
                                         chat_id=message.chat.id)
             await bot.send_chat_action(message.chat.id, 'typing')
             print("Sending file:", uploaded_file)
-            gemini_response = await chat_session.send_message_async(
-                [uploaded_file, message.caption or "Выполни задания в этом документе"]
-            )
+            gemini_message = [uploaded_file, message.caption or "Выполни задания в этом документе"]
+            user_message = [uploaded_file.name, message.caption or "Выполни задания в этом документе"]
+
+            if file["path"]:
+                try:
+                    shutil.rmtree(file["path"])
+                except FileNotFoundError as e:
+                    print(str(e))
+                    print("Nothing to delete")
         else:
             await bot.send_chat_action(message.chat.id, 'typing')
-            gemini_response = await chat_session.send_message_async(message.text)
+            user_message = message.text
+            gemini_message = message.text
+
+        error_msg = ""
+        counter = 1
+        while not gemini_response and counter <= 3:
+            try:
+                gemini_response = await chat_session.send_message_async(gemini_message)
+            except Exception as e:
+                if error_msg:
+                    print(error_msg.message_id)
+                    error_msg = await bot.edit_message_text(error_msg.text + ".",
+                                                            message_id=error_msg.message_id,
+                                                            chat_id=error_msg.chat.id)
+                else:
+                    error_msg = await message.answer(str(e))
+
+                logging.log(level=logging.INFO, msg="Sleeping...")
+                await asyncio.sleep(3)
+                counter += 1
+
         response_content = gemini_response.text
+
     else:  # Groq или OpenAI
+        user_message = message.text
         response = await client.chat.completions.create(
             model=chosen_model,
             stream=False,
             stop=None,
             max_tokens=8000,
             messages=context,
-            temperature=1,
+            temperature=0.2,
             top_p=0.95
         )
         response_content = response.choices[0].message.content
 
-    # Добавляем вопрос и ответ в контекст
     if message.document:
-        context.append({"role": "user", "content": [
-            uploaded_file.name, message.caption or "Выполни задания в этом документе"
-        ]})
-    else:
-        context.append({"role": "user", "content": message.text})
+        context.append({"role": "user", "content": user_message})
     context.append({"role": "assistant", "content": response_content})
 
     text = await replace_asterisk(response_content)
