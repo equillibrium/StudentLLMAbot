@@ -16,7 +16,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile
 from dotenv import load_dotenv
 
-from clients import system_message, groq_client, gemini_client
+from clients import system_message, get_client_for_model
 from files import convert_to_pdf, upload_to_gemini, wait_for_files_active, get_from_gemini
 from files import list_gemini_files
 from states import redis, save_user_context, get_user_model, get_user_context
@@ -31,7 +31,7 @@ class TestState(StatesGroup):
     test = State()
 
 
-api_server = TelegramAPIServer.from_base('http://localhost:8081', is_local=True)
+api_server = TelegramAPIServer.from_base(os.getenv("API_SERVER_URL"), is_local=True)
 
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
           session=AiohttpSession(api=api_server),
@@ -48,17 +48,6 @@ async def set_user_model(user_id, model):
     # При смене модели создаем новый контекст с system message
     initial_context = [{"role": "system", "content": system_message}]
     await save_user_context(user_id, initial_context)
-
-
-async def get_client_for_model(model):
-    if model == MODEL_CHOICES[0]:
-        return groq_client
-    elif model == MODEL_CHOICES[1]:
-        return groq_client
-    elif model == MODEL_CHOICES[2]:  # Gemini model
-        return gemini_client
-    else:
-        raise ValueError(f"Unknown model: {model}")
 
 
 async def replace_asterisk(text):
@@ -87,9 +76,21 @@ async def start(message: types.Message):
 @dp.message(TestState.test, F.document)
 async def test_state(message: types.Message, state: FSMContext) -> None:
     await state.clear()
-    print(await bot.get_file(message.document.file_id))
+    dl = await bot.get_file(message.document.file_id)
+    print(dl)
     print(message.document)
-    print(os.listdir(f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/documents"))
+    local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv("TELEGRAM_BOT_TOKEN")}\\documents\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/documents/"
+    print(os.listdir(local_path))
+
+    src_name = os.path.basename(dl.file_path)
+    dest_folder = f"{local_path}{message.from_user.id}"
+    try:
+        os.mkdir(dest_folder)
+    except FileExistsError:
+        print("Don't need to create folder")
+    shutil.move(local_path + src_name, os.path.join(dest_folder, message.document.file_name))
+
+    print(os.listdir(local_path))
 
 
 @dp.message(Command("test"))
@@ -137,19 +138,20 @@ async def chat_handler(message: types.Message):
     status = ""
     gemini_response = ""
     gemini_message = ""
+    local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv("TELEGRAM_BOT_TOKEN")}\\documents\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/documents/"
 
     # Если есть документ, сначала обрабатываем его через Gemini
     if message.document:
         await bot.send_chat_action(message.chat.id, 'upload_document')
 
-        files_dir = f"c:\\temp\\{user_id}\\" if os.name == "nt" else f"/tmp/{user_id}/"
-        try:
-            os.mkdir(files_dir)
-        except FileExistsError as e:
-            print(str(e))
+        # files_dir = f"c:\\temp\\{user_id}\\" if os.name == "nt" else f"/tmp/{user_id}/"
+        # try:
+        #     os.mkdir(files_dir)
+        # except FileExistsError as e:
+        #     print(str(e))
 
         file = {
-            "path": files_dir,
+            "path": local_path + user_id,
             "name": message.document.file_name,
             "id": message.document.file_id,
             "mimetype": message.document.mime_type,
@@ -157,6 +159,7 @@ async def chat_handler(message: types.Message):
         }
 
         processed_files = await get_user_files(user_id)
+
         gemini_saved_documents = await list_gemini_files()
 
         print("Processed files", processed_files)
@@ -173,23 +176,40 @@ async def chat_handler(message: types.Message):
 
         if not file.get('gemini_name', '') and not file.get('pdf_name', ''):
             print("Downloading file from telegram...")
-            await bot.download(file=file["id"], destination=file["path"] + file["name"])
+            # await bot.download(file=file["id"], destination=file["path"] + file["name"])
+            try:
+                dl = await bot.get_file(file["id"])
+                src_name = os.path.basename(dl.file_path)
+
+                try:
+                    os.mkdir(file["path"])
+                except FileExistsError:
+                    print("Don't need to create folder")
+
+                shutil.move(local_path + src_name, os.path.join(file["path"], message.document.file_name))
+            except Exception as e:
+                await message.answer(str(e))
+
         status = await message.answer("Файл получен!")
         await bot.send_chat_action(message.chat.id, 'upload_document')
 
-        if "pdf" not in file.get("mimetype", "") and not file.get("pdf_name", "") and not file.get("gemini_name", ""):
+        if "pdf" not in file.get("mimetype", "") and "image" not in file.get("mimetype", "") and not file.get(
+                "pdf_name", "") and not file.get("gemini_name", ""):
             await bot.edit_message_text("Конвертирую файл в pdf...", message_id=status.message_id,
                                         chat_id=message.chat.id)
             await bot.send_chat_action(message.chat.id, 'upload_document')
             try:
-                pdf_name = await convert_to_pdf(file=file)
-                with open(f"{file['path']}{pdf_name}", 'rb') as f:
+                converted_pdf = await convert_to_pdf(file=file)
+                pdf_scr = os.path.join(file["path"], converted_pdf)
+                pdf_dest = os.path.join(file["path"], file["name"].split(".")[0] + ".pdf")
+                pdf_name = os.path.basename(pdf_dest)
+                shutil.move(pdf_scr, pdf_dest)
+                with open(pdf_dest, 'rb') as f:
                     pdf_file = BufferedInputFile(f.read(), filename=pdf_name)
                     await message.answer_document(pdf_file,
                                                   caption="Вот документ в PDF для повторного использования, если необходимо. Я понимаю только PDF! Ответ подготавливается...")
                 await bot.edit_message_text("Файл успешно сконвертирован в pdf!", message_id=status.message_id,
                                             chat_id=message.chat.id)
-
             except Exception as e:
                 await message.answer(str(e))
                 return
@@ -205,8 +225,9 @@ async def chat_handler(message: types.Message):
                                         chat_id=message.chat.id)
             await bot.send_chat_action(message.chat.id, 'upload_document')
             try:
-                uploaded_file = await upload_to_gemini(path=file["path"] + file['pdf_name'],
-                                                       mime_type='application/pdf')
+                uploaded_file = await upload_to_gemini(path=os.path.join(file["path"], file['pdf_name']),
+                                                       mime_type='application/pdf' if ".pdf" in file["pdf_name"] else
+                                                       file["mimetype"])
             except Exception as e:
                 await message.answer(str(e))
             await bot.edit_message_text("Обработка файла в Gemini...", message_id=status.message_id,
@@ -228,7 +249,7 @@ async def chat_handler(message: types.Message):
         context.append({"role": "user", "content": message.text})
 
     # Продолжаем обработку с выбранной моделью
-    if chosen_model == MODEL_CHOICES[2]:  # Gemini model
+    if chosen_model == MODEL_CHOICES[2] or chosen_model == MODEL_CHOICES[3]:  # Gemini model
         gemini_history = []
         for msg in context[1:]:
             if msg["role"] == "assistant":
@@ -273,12 +294,12 @@ async def chat_handler(message: types.Message):
 
         error_msg = ""
         counter = 1
-        while not gemini_response and counter <= 3:
+        while not gemini_response and counter <= 5:
             try:
                 gemini_response = await chat_session.send_message_async(gemini_message)
             except Exception as e:
                 if error_msg:
-                    print(error_msg.message_id)
+                    logging.log(level=logging.WARN, msg=str(e))
                     error_msg = await bot.edit_message_text(error_msg.text + ".",
                                                             message_id=error_msg.message_id,
                                                             chat_id=error_msg.chat.id)
@@ -286,10 +307,16 @@ async def chat_handler(message: types.Message):
                     error_msg = await message.answer(str(e))
 
                 logging.log(level=logging.INFO, msg="Sleeping...")
-                await asyncio.sleep(3)
+                await asyncio.sleep(5)
                 counter += 1
-
-        response_content = gemini_response.text
+        try:
+            response_content = gemini_response.text
+        except Exception:
+            text = "Не получен ответ от Gemini, попробуй позже...\n Или выбери другую модель Gemini (/model)"
+            await bot.edit_message_text(text, message_id=status.message_id, chat_id=status.chat.id)
+            await bot.delete_message(message_id=error_msg.message_id, chat_id=error_msg.chat.id) if error_msg else None
+            logging.log(level=logging.ERROR, msg=text)
+            return
 
     else:  # Groq или OpenAI
         user_message = message.text

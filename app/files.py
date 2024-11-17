@@ -13,17 +13,17 @@ genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 async def convert_to_pdf(file):
     t = OfficeToPdf(public_key=os.getenv("ILOVEPDF_PUB_KEY"),
                     verify_ssl=False, proxies=None)
-    t.add_file(file_path=f'{file["path"] + file["name"]}')
+    t.add_file(file_path=os.path.join(file["path"], file["name"]))
     t.debug = False
-    t.set_output_folder(f'{file['path']}')
+    t.set_output_folder(file['path'])
 
     t.execute()
 
-    pdf_name = t.download()
+    converted_pdf = t.download()
 
     t.delete_current_task()
 
-    return pdf_name
+    return os.path.basename(converted_pdf)
 
 
 async def upload_to_gemini(path, mime_type=None):
