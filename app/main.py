@@ -6,8 +6,12 @@ import shutil
 
 from aiogram import Bot, types, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.telegram import TelegramAPIServer
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile
 from dotenv import load_dotenv
@@ -22,7 +26,13 @@ load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
 
+class TestState(StatesGroup):
+    test = State()
+
+api_server = TelegramAPIServer.from_base('http://localhost:8081', is_local=True)
+
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
+          session=AiohttpSession(api=api_server),
           default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
 dp = Dispatcher(storage=RedisStorage(redis))
 
@@ -70,6 +80,18 @@ async def start(message: types.Message):
     text = (f"Привет, {message.from_user.first_name}! Я Student LLMAbot. Твой Telegram ID: {user_id}\n"
             f"Текущая модель: {chosen_model}\nНапиши мне запрос, и я постараюсь помочь!")
     await message.answer(text)
+
+
+@dp.message(TestState.test, F.document)
+async def test_state(message: types.Message, state: FSMContext) -> None:
+    await state.clear()
+    print(await bot.get_file(message.document.file_id))
+    print(message.document)
+
+@dp.message(Command("test"))
+async def test(message: types.Message, state: FSMContext):
+    await state.set_state(TestState.test)
+    await message.answer(await state.get_state())
 
 
 @dp.message(Command("reset"))
@@ -159,7 +181,8 @@ async def chat_handler(message: types.Message):
                 pdf_name = await convert_to_pdf(file=file)
                 with open(f"{file['path']}{pdf_name}", 'rb') as f:
                     pdf_file = BufferedInputFile(f.read(), filename=pdf_name)
-                    await message.answer_document(pdf_file, caption="Вот документ в PDF для повторного использования, если необходимо. Я понимаю только PDF! Ответ подготавливается...")
+                    await message.answer_document(pdf_file,
+                                                  caption="Вот документ в PDF для повторного использования, если необходимо. Я понимаю только PDF! Ответ подготавливается...")
                 await bot.edit_message_text("Файл успешно сконвертирован в pdf!", message_id=status.message_id,
                                             chat_id=message.chat.id)
 

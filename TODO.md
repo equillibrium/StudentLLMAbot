@@ -1,0 +1,3 @@
+- [ ] Image handling without pdf
+- [ ] Download file size limit (20MB) - local server, do not download files etc
+- [ ] Create k3s volume for sharing files between bot and local api server
