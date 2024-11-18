@@ -351,21 +351,19 @@ async def chat_handler(message: types.Message):
 
     text = await replace_asterisk(response_content)
 
-    if len(text) <= MAX_MESSAGE_LENGTH:
+    chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+
+    try:
+        await message.answer(text)
+    except Exception as e:
+        print(str(e), type(e))
+
+    for chunk in chunks:
         try:
-            await message.answer(text)
+            await message.answer(chunk)
         except Exception as e:
-            print(str(e))
-            await message.answer(text, parse_mode=None)
-    else:
-        chunks = [text[i:i + MAX_MESSAGE_LENGTH]
-                  for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
-        for chunk in chunks:
-            try:
-                await message.answer(text)
-            except Exception as e:
-                print(str(e))
-                await message.answer(chunk, parse_mode=None)
+            print(str(e), type(e))
+            await message.answer(chunk, parse_mode=None)
 
     # Сохраняем контекст только после успешной отправки
     await save_user_context(user_id, context)
