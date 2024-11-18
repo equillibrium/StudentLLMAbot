@@ -246,11 +246,20 @@ async def chat_handler(message: types.Message):
                                                        file["mimetype"])
             except Exception as e:
                 await message.answer(str(e))
-            await bot.edit_message_text("Обработка файла в Gemini...", message_id=status.message_id,
-                                        chat_id=message.chat.id)
-            await bot.send_chat_action(message.chat.id, 'typing')
-            await wait_for_files_active([uploaded_file])
-            file['gemini_name'] = uploaded_file.name
+
+            try:
+                await bot.edit_message_text("Обработка файла в Gemini...", message_id=status.message_id,
+                                            chat_id=status.chat.id)
+                await bot.send_chat_action(message.chat.id, 'typing')
+            except Exception as e:
+                await message.answer(str(e))
+
+            try:
+                await wait_for_files_active([uploaded_file])
+                file['gemini_name'] = uploaded_file.name
+            except Exception as e:
+                await message.answer(str(e))
+
         else:
             uploaded_file = await get_from_gemini(file['gemini_name'])
 
