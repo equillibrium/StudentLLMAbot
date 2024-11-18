@@ -38,7 +38,7 @@ bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
           default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
 dp = Dispatcher(storage=RedisStorage(redis))
 
-MAX_MESSAGE_LENGTH = 4096
+MAX_MESSAGE_LENGTH = 4000
 MODEL_CHOICES = os.getenv('MODEL_CHOICES').split(',')
 DEFAULT_MODEL = MODEL_CHOICES[0]
 
@@ -128,12 +128,6 @@ async def set_model_callback(query: types.CallbackQuery):
     await query.message.edit_text(f"Текущая модель установлена на '{chosen_model}'.")
 
 
-# @dp.message(F.photo)
-# async def photo_handler(message: types.Message) -> None:
-#     await message.answer("Отправь фото без сжатия, пока сжатые фото не поддерживаются...")
-#     print(message.photo)
-#     print(await bot.get_file(message.photo[-1].file_id))
-
 @dp.message(F.text | F.document | F.photo)
 async def chat_handler(message: types.Message):
     user_id = str(message.from_user.id)
@@ -151,11 +145,6 @@ async def chat_handler(message: types.Message):
     if message.document or message.photo:
         await bot.send_chat_action(message.chat.id, 'upload_document')
 
-        # files_dir = f"c:\\temp\\{user_id}\\" if os.name == "nt" else f"/tmp/{user_id}/"
-        # try:
-        #     os.mkdir(files_dir)
-        # except FileExistsError as e:
-        #     print(str(e))
         if message.document:
             file = {
                 "path": local_path + user_id,
