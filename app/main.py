@@ -350,8 +350,7 @@ async def chat_handler(message: types.Message):
     context.append({"role": "assistant", "content": response_content})
 
     text = (await replace_asterisk(response_content))
-    text = text.replace("[", "\\[").replace("]", "\\]").replace("«", "\\«").replace("»", "\\»")
-    text = text.replace("№", "\\№")
+    text = text.replace("_", "\\_")
 
     chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
     not_sent = False
