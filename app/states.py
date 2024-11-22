@@ -4,6 +4,7 @@ import os
 import redis.asyncio as aioredis
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 redis = aioredis.from_url(os.getenv('REDIS_URL'))
@@ -35,5 +36,11 @@ async def save_user_files(user_id, data):
 
 
 async def get_user_model(user_id, default_model):
+    from main import MODEL_CHOICES
     model = await redis.get(f"{user_id}_model")
-    return model.decode() if model else default_model
+    if model:
+        decoded_model = model.decode()
+        # Проверяем, существует ли модель в списке доступных
+        if decoded_model in MODEL_CHOICES:
+            return decoded_model
+    return default_model

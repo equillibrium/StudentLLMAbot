@@ -16,7 +16,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile
 from dotenv import load_dotenv
 
-from clients import system_message, get_client_for_model
+from clients import get_client_for_model
 from files import convert_to_pdf, upload_to_gemini, wait_for_files_active, get_from_gemini
 from files import list_gemini_files
 from states import redis, save_user_context, get_user_model, get_user_context
@@ -26,12 +26,22 @@ load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
 
+SYSTEM_MESSAGE = ('''
+    Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой.
+    Отвечай всегда на русском языке, не переходи на английский, если не просят.
+    Если к тебе обратятся на английском языке или попросят помочь с английским,
+    можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах,
+    помогай студентам решать их проблемы с учебой. Старайся не использовать в ответе двойные пробелы,
+    большие (заглавные) буквы после двоеточия. Старайся использовать меньше списков.
+''')
+
 
 class TestState(StatesGroup):
     test = State()
 
 
-api_server = TelegramAPIServer.from_base(os.getenv("API_SERVER_URL"), is_local=True)
+api_server = TelegramAPIServer.from_base(
+    os.getenv("API_SERVER_URL"), is_local=True)
 
 bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'),
           session=AiohttpSession(api=api_server),
@@ -46,7 +56,7 @@ DEFAULT_MODEL = MODEL_CHOICES[0]
 async def set_user_model(user_id, model):
     await redis.set(f"{user_id}_model", model)
     # При смене модели создаем новый контекст с system message
-    initial_context = [{"role": "system", "content": system_message}]
+    initial_context = [{"role": "system", "content": SYSTEM_MESSAGE}]
     await save_user_context(user_id, initial_context)
 
 
@@ -79,7 +89,8 @@ async def test_state(message: types.Message, state: FSMContext) -> None:
     dl = await bot.get_file(message.document.file_id)
     print(dl)
     print(message.document)
-    local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv("TELEGRAM_BOT_TOKEN")}\\documents\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/documents/"
+    local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv(
+        "TELEGRAM_BOT_TOKEN")}\\documents\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/documents/"
     print(os.listdir(local_path))
 
     src_name = os.path.basename(dl.file_path)
@@ -88,7 +99,8 @@ async def test_state(message: types.Message, state: FSMContext) -> None:
         os.mkdir(dest_folder)
     except FileExistsError:
         print("Don't need to create folder")
-    shutil.move(local_path + src_name, os.path.join(dest_folder, message.document.file_name))
+    shutil.move(local_path + src_name,
+                os.path.join(dest_folder, message.document.file_name))
 
     print(os.listdir(local_path))
 
@@ -131,7 +143,7 @@ async def set_model_callback(query: types.CallbackQuery):
 @dp.message(F.text | F.document | F.photo)
 async def chat_handler(message: types.Message):
     user_id = str(message.from_user.id)
-    context = await get_user_context(user_id, system_message=system_message)
+    context = await get_user_context(user_id, system_message=SYSTEM_MESSAGE)
     chosen_model = await get_user_model(user_id, default_model=DEFAULT_MODEL)
     client = await get_client_for_model(chosen_model)
     uploaded_file = ""
@@ -139,7 +151,8 @@ async def chat_handler(message: types.Message):
     gemini_response = ""
     gemini_message = ""
     folder_type = "photos" if message.photo else "documents"
-    local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv("TELEGRAM_BOT_TOKEN")}\\{folder_type}\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/{folder_type}/"
+    local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv(
+        "TELEGRAM_BOT_TOKEN")}\\{folder_type}\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/{folder_type}/"
 
     # Если есть документ, сначала обрабатываем его через Gemini
     if message.document or message.photo:
@@ -191,7 +204,8 @@ async def chat_handler(message: types.Message):
                 except FileExistsError:
                     print("Don't need to create folder")
 
-                shutil.move(local_path + src_name, os.path.join(file["path"], file["name"]))
+                shutil.move(local_path + src_name,
+                            os.path.join(file["path"], file["name"]))
             except Exception as e:
                 await message.answer(str(e))
 
@@ -206,7 +220,8 @@ async def chat_handler(message: types.Message):
             try:
                 converted_pdf = await convert_to_pdf(file=file)
                 pdf_scr = os.path.join(file["path"], converted_pdf)
-                pdf_dest = os.path.join(file["path"], file["name"].split(".")[0] + ".pdf")
+                pdf_dest = os.path.join(
+                    file["path"], file["name"].split(".")[0] + ".pdf")
                 pdf_name = os.path.basename(pdf_dest)
                 shutil.move(pdf_scr, pdf_dest)
                 with open(pdf_dest, 'rb') as f:
@@ -263,7 +278,8 @@ async def chat_handler(message: types.Message):
         context.append({"role": "user", "content": message.text})
 
     # Продолжаем обработку с выбранной моделью
-    if chosen_model == MODEL_CHOICES[2] or chosen_model == MODEL_CHOICES[3]:  # Gemini model
+    # Gemini model
+    if chosen_model == MODEL_CHOICES[2] or chosen_model == MODEL_CHOICES[3]:
         gemini_history = []
         for msg in context[1:]:
             if msg["role"] == "assistant":
@@ -292,8 +308,10 @@ async def chat_handler(message: types.Message):
                                         chat_id=message.chat.id)
             await bot.send_chat_action(message.chat.id, 'typing')
             print("Sending file:", uploaded_file)
-            gemini_message = [uploaded_file, message.caption or "Выполни задания в этом документе"]
-            user_message = [uploaded_file.name, message.caption or "Выполни задания в этом документе"]
+            gemini_message = [
+                uploaded_file, message.caption or "Выполни задания в этом документе"]
+            user_message = [uploaded_file.name,
+                            message.caption or "Выполни задания в этом документе"]
 
             if file["path"]:
                 try:
@@ -352,7 +370,8 @@ async def chat_handler(message: types.Message):
     text = (await replace_asterisk(response_content))
     text = text.replace("_", "\\_")
 
-    chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+    chunks = [text[i:i + MAX_MESSAGE_LENGTH]
+              for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
     not_sent = False
 
     try:

@@ -6,16 +6,9 @@ from groq import AsyncGroq
 
 load_dotenv()
 
-MODEL_CHOICES = os.getenv('MODEL_CHOICES').split(',')
-
-system_message = ("Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой. "
-                  "Отвечай всегда на русском языке, не переходи на английский, если не просят. "
-                  "Если к тебе обратятся на английском языке или попросят помочь с английским, "
-                  "можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах, "
-                  "помогай студентам решать их проблемы с учебой.")
-
 
 async def get_client_for_model(model):
+    from main import MODEL_CHOICES, SYSTEM_MESSAGE
     if model == MODEL_CHOICES[0]:
         groq_client = AsyncGroq(api_key=os.getenv('GROQ_API_KEY'))
         return groq_client
@@ -36,7 +29,7 @@ async def get_client_for_model(model):
         gemini_client = genai.GenerativeModel(
             model_name=model,
             generation_config=generation_config,
-            system_instruction=system_message
+            system_instruction=SYSTEM_MESSAGE
         )
         return gemini_client
     elif model == MODEL_CHOICES[3]:
@@ -52,7 +45,7 @@ async def get_client_for_model(model):
         gemini_client = genai.GenerativeModel(
             model_name=model,
             generation_config=generation_config,
-            system_instruction=system_message
+            system_instruction=SYSTEM_MESSAGE
         )
         return gemini_client
     else:
