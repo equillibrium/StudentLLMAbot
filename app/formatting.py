@@ -1,8 +1,4 @@
-import logging
-import os
-
-import requests
-from aiogram.utils.formatting import Pre, as_marked_list, as_line, Code, Text, Bold
+from aiogram.utils.formatting import Pre, as_marked_list, Code, Text, Bold
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -54,7 +50,7 @@ def format_message(message: str) -> str:
 
     bold_formatted_parts = []
     for lines in formatted_parts:
-        bold_lines =  lines.split("\\*\\*")
+        bold_lines = lines.split("\\*\\*")
         for i, bold_line in enumerate(bold_lines):
             if i % 2 == 0:
                 bold_formatted_parts.append(bold_line)
@@ -65,50 +61,3 @@ def format_message(message: str) -> str:
     result = "".join(bold_formatted_parts)
 
     return result
-
-
-# def send_message(message):
-#     BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-#     # Replace with the chat ID of the recipient
-#     CHAT_ID = 217815700
-#     # Your message
-#     MESSAGE = message
-#
-#     # Telegram API URL
-#     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-#
-#     # Parameters for the API request
-#     params = {
-#         "chat_id": CHAT_ID,
-#         "text": MESSAGE,
-#         "parse_mode": "MARKDOWNV2",
-#     }
-#
-#     print(url)
-#     response = requests.post(url, data=params)
-#
-#     print(response.text)
-#
-# text = """
-# Simple text
-# A line with **bold** text
-# ```python
-# print("code here")
-# print("and some more code")
-# ```
-# And a line with `code.py`
-# Here's a list:
-# *one
-# *two
-# """
-#
-# msg = format_message(text)
-#
-# send_message(msg)
-
-text = """```python
-code
-```
-"""
-
-print(text.split('```')[1].split('\n')[0])
