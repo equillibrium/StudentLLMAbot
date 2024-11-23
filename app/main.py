@@ -370,9 +370,6 @@ async def chat_handler(message: types.Message):
         context.append({"role": "user", "content": user_message})
     context.append({"role": "assistant", "content": response_content})
 
-    # text = (await replace_asterisk(response_content))
-    # text = text.replace("_", "\\_")
-
     from formatting import format_message
     text = format_message(response_content)
 
