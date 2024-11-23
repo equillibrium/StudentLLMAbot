@@ -109,14 +109,16 @@ async def test_state(message: types.Message, state: FSMContext) -> None:
 async def test(message: types.Message, state: FSMContext):
     await state.set_state(TestState.test)
     await message.answer(await state.get_state())
+    print(message)
 
 
 @dp.message(Command("reset"))
-async def reset(message: types.Message):
+async def reset(message: types.Message, state: FSMContext):
     text = 'Контекст нашей беседы очищен!'
     try:
         await bot.send_chat_action(message.chat.id, 'typing')
         await redis.delete(message.from_user.id)
+        await state.clear()
         await message.answer(text)
     except Exception as e:
         await message.answer(str(e))
@@ -142,6 +144,7 @@ async def set_model_callback(query: types.CallbackQuery):
 
 @dp.message(F.text | F.document | F.photo)
 async def chat_handler(message: types.Message):
+    global lang
     user_id = str(message.from_user.id)
     context = await get_user_context(user_id, system_message=SYSTEM_MESSAGE)
     chosen_model = await get_user_model(user_id, default_model=DEFAULT_MODEL)
@@ -367,15 +370,17 @@ async def chat_handler(message: types.Message):
         context.append({"role": "user", "content": user_message})
     context.append({"role": "assistant", "content": response_content})
 
-    text = (await replace_asterisk(response_content))
-    text = text.replace("_", "\\_")
+    # text = (await replace_asterisk(response_content))
+    # text = text.replace("_", "\\_")
 
-    chunks = [text[i:i + MAX_MESSAGE_LENGTH]
-              for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
+    from formatting import format_message
+    text = format_message(response_content)
+
+    chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
     not_sent = False
 
     try:
-        await message.answer(text)
+        await message.answer(text, parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
         print(str(e), type(e))
         not_sent = True
@@ -383,10 +388,21 @@ async def chat_handler(message: types.Message):
     if not_sent:
         for chunk in chunks:
             try:
-                await message.answer(chunk)
+                await message.answer(chunk, parse_mode=ParseMode.MARKDOWN_V2)
             except Exception as e:
                 print(str(e), type(e))
-                await message.answer(chunk, parse_mode=None)
+                try:
+                    if chunk.split("```")[1].split("\n")[0] != '':
+                        lang = chunk.split("```")[1].split("\n")[0]
+                        chunk = chunk + "\n```"
+                        print(chunk)
+                    else:
+                        chunk = f"```{lang}\n" + chunk
+                        print(chunk)
+                    await message.answer(chunk, parse_mode=ParseMode.MARKDOWN_V2)
+                except Exception as e:
+                    print(str(e), type(e))
+                    await message.answer(chunk, parse_mode=None)
 
     # Сохраняем контекст только после успешной отправки
     await save_user_context(user_id, context)
