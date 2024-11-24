@@ -30,14 +30,15 @@ if (-not (Get-Process 'Docker Desktop')) {
     . "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 }
 
+kubectl config use-context docker-desktop
+if ($LASTEXITCODE -eq 1) { throw "Can't find context" }
+
 $KubeStatus = . kubectl.exe get nodes
 while (-not $KubeStatus) {
     $KubeStatus
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 5
     $KubeStatus = . kubectl.exe get nodes
 }
-
-kubectl config use-context docker-desktop
 
 kubectl create ns $PROJECT
 
