@@ -99,4 +99,7 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           # sudo apt-get update -qq && sudo apt-get install -q -y gettext
-          cat k8s/deployment.yaml | envsubst | kubectl apply -n $PROJECT -f -
+          helm upgrade --install redis-k8s oci://registry-1.docker.io/bitnamicharts/redis \
+            --set=architecture=standalone \
+            --set=auth.enabled=false
+          kubectl apply -f k8s/ -o=yaml --dry-run=client | envsubst | kubectl apply -n $PROJECT -f -
