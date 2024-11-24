@@ -102,4 +102,4 @@ jobs:
           helm upgrade --install redis-k8s oci://registry-1.docker.io/bitnamicharts/redis \
             --set=architecture=standalone \
             --set=auth.enabled=false
-          kubectl apply -f k8s/ -o=yaml --dry-run=client | envsubst | kubectl apply -n $PROJECT -f -
+          cat k8s/* | envsubst | kubectl apply -n $PROJECT -f -
