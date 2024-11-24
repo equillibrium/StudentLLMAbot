@@ -26,6 +26,18 @@ function Base64Decode
     }
 }
 
+if (-not (Get-Process 'Docker Desktop')) {
+    . "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+}
+
+$KubeStatus = . kubectl.exe get nodes
+while (-not $KubeStatus) {
+    $KubeStatus
+    Start-Sleep -Seconds 3
+    $KubeStatus = . kubectl.exe get nodes
+}
+
+kubectl config use-context docker-desktop
 
 kubectl create ns $PROJECT
 
@@ -56,7 +68,10 @@ kubectl patch serviceaccount $PROJECT -n $PROJECT -p '{\"imagePullSecrets\":[{\"
 helm upgrade --install --namespace default redis-k8s oci://registry-1.docker.io/bitnamicharts/redis `
             --set=architecture=standalone --set=auth.enabled=false
 
+"$GITHUB_PAT" | docker login "ghcr.io" -u $GITHUB_USERNAME --password-stdin
+docker build -t "$IMAGE`:test" ..\.
+docker push "$IMAGE`:test"
 
-(Get-Content ..\k8s\deployment.yaml).Replace("`${PROJECT}", "$PROJECT").Replace("`${IMAGE}",
-        "$IMAGE").Replace("`${COMMIT_MESSAGE}", "$COMMIT_MESSAGE") | `
+(Get-Content ..\k8s\deployment.yaml).Replace("`${PROJECT}", "$PROJECT").Replace("`${IMAGE}:latest",
+        "$IMAGE`:test").Replace("`${COMMIT_MESSAGE}", "$COMMIT_MESSAGE") | `
         kubectl apply -f -
