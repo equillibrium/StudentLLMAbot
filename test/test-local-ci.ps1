@@ -1,6 +1,6 @@
 $PROJECT = "test-studentllmabot"
 $IMAGE = "ghcr.io/equillibrium/studentllmabot"
-$COMMIT_MESSAGE = "Fix redis url"
+$COMMIT_MESSAGE = "Trying to fix formatting 56"
 
 function Base64Decode
 {
@@ -26,8 +26,10 @@ function Base64Decode
     }
 }
 
-if (-not (Get-Process 'Docker Desktop')) {
+$DockerProcess = Get-Process 'Docker Desktop'
+if (-not $DockerProcess) {
     . "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    Start-Sleep -Seconds 5
 }
 
 kubectl config use-context docker-desktop
@@ -66,13 +68,22 @@ kubectl create serviceaccount "$PROJECT" -n "$PROJECT" `
 
 kubectl patch serviceaccount $PROJECT -n $PROJECT -p '{\"imagePullSecrets\":[{\"name\":\"ghcr\"}]}'
 
-helm upgrade --install --namespace default redis-k8s oci://registry-1.docker.io/bitnamicharts/redis `
+$Redis = kubectl.exe get statefulset -n default
+if (-not $Redis) {
+    helm upgrade --install --namespace default redis-k8s oci://registry-1.docker.io/bitnamicharts/redis `
             --set=architecture=standalone --set=auth.enabled=false
+}
 
 "$GITHUB_PAT" | docker login "ghcr.io" -u $GITHUB_USERNAME --password-stdin
-docker build -t "$IMAGE`:test" ..\.
+$DockerBuild = Start-Process -Wait -NoNewWindow -PassThru -FilePath docker `
+    -ArgumentList "build -t `"$IMAGE`:test`" ..\."
+if ($DockerBuild.ExitCode -ne 0){
+    throw "Docker build unseccessfull"
+}
 docker push "$IMAGE`:test"
 
 (Get-Content ..\k8s\deployment.yaml).Replace("`${PROJECT}", "$PROJECT").Replace("`${IMAGE}:latest",
         "$IMAGE`:test").Replace("`${COMMIT_MESSAGE}", "$COMMIT_MESSAGE") | `
         kubectl apply -f -
+
+kubectl.exe rollout status deployment/$PROJECT -n $PROJECT

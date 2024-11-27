@@ -371,7 +371,10 @@ async def chat_handler(message: types.Message):
     context.append({"role": "assistant", "content": response_content})
 
     from formatting import format_message
-    text = format_message(response_content)
+    text = await format_message(response_content)
+
+    print(response_content)
+    print(text)
 
     chunks = [text[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(text), MAX_MESSAGE_LENGTH)]
     not_sent = False

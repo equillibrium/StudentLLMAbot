@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def format_message(message: str) -> str:
+async def format_message(message: str) -> str:
     formatted_parts = []
     inside_code_block = False
     buffer = []
@@ -27,9 +27,18 @@ def format_message(message: str) -> str:
                 code_block_language = None  # Reset the language identifier
         elif inside_code_block:
             buffer.append(line)  # Collect lines inside the code block
-        elif line.startswith('*'):
-            clean_line = line.lstrip('*').strip()
-            formatted_parts.append(as_marked_list(clean_line).as_markdown())
+        elif line.lstrip().startswith('*') and not line.lstrip().startswith('**'):
+            clean_line = "-" + line.lstrip()[1:]
+            formatted_line = ""
+            code = clean_line.split("`")
+            for i, part in enumerate(code):
+                if i % 2 == 0:
+                    # Escape regular text
+                    formatted_line += Text(part).as_markdown()
+                else:
+                    # Format as inline code
+                    formatted_line += Code(part).as_markdown()
+            formatted_parts.append(formatted_line)
         else:
             # Handle inline code and escape text
             formatted_line = ""
