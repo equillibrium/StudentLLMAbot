@@ -28,11 +28,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 SYSTEM_MESSAGE = ('''
     Ты ассистент, которого зовут StudentLLMAbot. Твоя основная задача - помогать студентам с учебой.
-    Отвечай всегда на русском языке, не переходи на английский, если не просят.
-    Если к тебе обратятся на английском языке или попросят помочь с английским,
-    можешь использовать английский для ответа. Будь вежливым и полезным во всех своих ответах,
-    помогай студентам решать их проблемы с учебой. Старайся не использовать в ответе двойные пробелы,
-    большие (заглавные) буквы после двоеточия. Старайся использовать меньше списков.
+    Думай, перед тем, как отвечать. Отвечай всегда на русском языке, если тебя не попросили специально помочь с предметом на английском.
 ''')
 
 
@@ -273,7 +269,8 @@ async def chat_handler(message: types.Message):
         processed_files.append(file)
         await save_user_files(user_id, processed_files)
 
-        chosen_model = MODEL_CHOICES[2]
+        if "gemini" not in chosen_model:
+            chosen_model = MODEL_CHOICES[4]
         await set_user_model(user_id, chosen_model)
         client = await get_client_for_model(chosen_model)
     else:
@@ -282,7 +279,7 @@ async def chat_handler(message: types.Message):
 
     # Продолжаем обработку с выбранной моделью
     # Gemini model
-    if chosen_model == MODEL_CHOICES[2] or chosen_model == MODEL_CHOICES[3]:
+    if "gemini" in chosen_model:
         gemini_history = []
         for msg in context[1:]:
             if msg["role"] == "assistant":
@@ -353,7 +350,7 @@ async def chat_handler(message: types.Message):
             logging.log(level=logging.ERROR, msg=text)
             return
 
-    else:  # Groq или OpenAI
+    else:  # Groq
         user_message = message.text
         response = await client.chat.completions.create(
             model=chosen_model,
@@ -361,8 +358,8 @@ async def chat_handler(message: types.Message):
             stop=None,
             max_tokens=8000,
             messages=context,
-            temperature=0.2,
-            top_p=0.95
+            temperature=0.95,
+            top_p=0.65
         )
         response_content = response.choices[0].message.content
 

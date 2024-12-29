@@ -1,6 +1,6 @@
 $PROJECT = "test-studentllmabot"
 $IMAGE = "ghcr.io/equillibrium/studentllmabot"
-$COMMIT_MESSAGE = "Fix redis url"
+$COMMIT_MESSAGE = "Add new models 8"
 
 function Base64Decode
 {
