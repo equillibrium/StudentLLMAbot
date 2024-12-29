@@ -98,8 +98,6 @@ async def test_state(message: types.Message, state: FSMContext) -> None:
     shutil.move(local_path + src_name,
                 os.path.join(dest_folder, message.document.file_name))
 
-    print(os.listdir(local_path))
-
 
 @dp.message(Command("test"))
 async def test(message: types.Message, state: FSMContext):
