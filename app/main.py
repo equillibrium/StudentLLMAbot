@@ -87,7 +87,6 @@ async def test_state(message: types.Message, state: FSMContext) -> None:
     print(message.document)
     local_path = f"\\\\wsl.localhost\\docker-desktop-data\\data\\docker\\volumes\\telegram-bot-api-data\\_data\\{os.getenv(
         "TELEGRAM_BOT_TOKEN")}\\documents\\" if os.name == "nt" else f"/var/lib/telegram-bot-api/{os.getenv("TELEGRAM_BOT_TOKEN")}/documents/"
-    print(os.listdir(local_path))
 
     src_name = os.path.basename(dl.file_path)
     dest_folder = f"{local_path}{message.from_user.id}"
