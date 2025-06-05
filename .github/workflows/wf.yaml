@@ -3,6 +3,7 @@ name: Build and push docker image, deploy to k3s
 on:
   push:
     branches: [ main, local_api_server ]
+  workflow_dispatch:
 jobs:
   build:
     name: Build bot docker image
