@@ -60,9 +60,9 @@ jobs:
 
           echo "$PROJECT","$IMAGE"
 
-      # - uses: tale/kubectl-action@v1
-      #   with:
-      #     base64-kube-config: ${{ secrets.KUBE_CONFIG }}
+      - uses: tale/kubectl-action@v1
+        with:
+          base64-kube-config: ${{ secrets.KUBE_CONFIG }}
 
       - run: kubectl create namespace $PROJECT || true
 
