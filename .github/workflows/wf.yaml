@@ -44,7 +44,7 @@ jobs:
           tags: ${{ env.IMAGE }}:latest,${{ env.IMAGE }}:cache
 
   deploy:
-    name: Deploy to k3s
+    name: Deploy to MacBook Pro Docker Desktop k8s
     runs-on: self-hosted
     needs: build
 
@@ -60,9 +60,9 @@ jobs:
 
           echo "$PROJECT","$IMAGE"
 
-      - uses: tale/kubectl-action@v1
-        with:
-          base64-kube-config: ${{ secrets.KUBE_CONFIG }}
+      # - uses: tale/kubectl-action@v1
+      #   with:
+      #     base64-kube-config: ${{ secrets.KUBE_CONFIG }}
 
       - run: kubectl create namespace $PROJECT || true
 
