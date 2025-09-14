@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     name: Build bot docker image
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, x64, k3s-runner]
     permissions:
       packages: write
       contents: read
@@ -45,7 +45,7 @@ jobs:
 
   deploy:
     name: Deploy to MacBook Pro Docker Desktop k8s
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, x64, k3s-runner]
     needs: build
 
     steps:
